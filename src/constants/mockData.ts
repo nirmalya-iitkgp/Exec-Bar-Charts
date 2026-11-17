@@ -1,0 +1,190 @@
+import { ChartDatasetMap, ChartMeta, ChartSettings, ChartType } from '../types/chart';
+
+export const CHART_METADATA: ChartMeta[] = [
+  {
+    type: ChartType.BARBELL,
+    label: 'Barbell (Dumbbell) Chart',
+    shortLabel: 'Barbell',
+    description: 'Compare two points per category to highlight directional shift or gap.',
+    schemaHint: 'Category, StartValue, EndValue',
+  },
+  {
+    type: ChartType.LOLLIPOP,
+    label: 'Lollipop Chart',
+    shortLabel: 'Lollipop',
+    description: 'Clean zero-anchored stems and dots for ranked comparisons.',
+    schemaHint: 'Category, Value',
+  },
+  {
+    type: ChartType.CLEVELAND,
+    label: 'Cleveland Dot Plot',
+    shortLabel: 'Cleveland Dot',
+    description: 'Multi-series dot alignment across categories without bar clutter.',
+    schemaHint: 'Category, SeriesA, SeriesB, SeriesC',
+  },
+  {
+    type: ChartType.SLOPEGRAPH,
+    label: 'Slopegraph',
+    shortLabel: 'Slopegraph',
+    description: 'Track two-period transitions and rank reversals with angled connectors.',
+    schemaHint: 'Category, Period1Value, Period2Value',
+  },
+  {
+    type: ChartType.BUMP,
+    label: 'Bump Chart',
+    shortLabel: 'Bump',
+    description: 'Visualize competitive rank movements across multiple time periods.',
+    schemaHint: 'Entity, Q1, Q2, Q3, Q4',
+  },
+  {
+    type: ChartType.BULLET,
+    label: 'Bullet Chart',
+    shortLabel: 'Bullet',
+    description: 'Evaluate actual KPI performance against target and qualitative bands.',
+    schemaHint: 'Metric, Actual, Target, PoorThreshold, GoodThreshold',
+  },
+  {
+    type: ChartType.SPAN,
+    label: 'Span (Range) Chart',
+    shortLabel: 'Span Range',
+    description: 'Display min-to-max spread and optional average markers by category.',
+    schemaHint: 'Category, MinValue, MaxValue, AverageValue',
+  },
+];
+
+export function createInitialDatasets(): ChartDatasetMap {
+  return {
+    [ChartType.BARBELL]: [
+      { id: 'bb-1', category: 'North America', startValue: 18.4, endValue: 24.8 },
+      { id: 'bb-2', category: 'EMEA Enterprise', startValue: 14.2, endValue: 19.6 },
+      { id: 'bb-3', category: 'APAC Growth', startValue: 21.0, endValue: 27.3 },
+      { id: 'bb-4', category: 'Cloud Platform', startValue: 28.5, endValue: 34.1 },
+      { id: 'bb-5', category: 'LatAm Commercial', startValue: 15.8, endValue: 13.1 },
+      { id: 'bb-6', category: 'Legacy Hardware', startValue: 11.6, endValue: 9.2 },
+    ],
+    [ChartType.LOLLIPOP]: [
+      { id: 'lp-1', category: 'Strategic Enterprise', value: 68 },
+      { id: 'lp-2', category: 'Partner Ecosystem', value: 54 },
+      { id: 'lp-3', category: 'Mid-Market Direct', value: 47 },
+      { id: 'lp-4', category: 'Public Sector', value: 39 },
+      { id: 'lp-5', category: 'Self-Serve Cloud', value: 31 },
+      { id: 'lp-6', category: 'SMB Legacy', value: 18 },
+    ],
+    [ChartType.CLEVELAND]: [
+      { id: 'cl-1', category: 'US-East (Virginia)', seriesA: 42, seriesB: 58, seriesC: 74 },
+      { id: 'cl-2', category: 'EU-Central (Frankfurt)', seriesA: 49, seriesB: 63, seriesC: 81 },
+      { id: 'cl-3', category: 'UK-South (London)', seriesA: 45, seriesB: 61, seriesC: 77 },
+      { id: 'cl-4', category: 'AP-South (Singapore)', seriesA: 64, seriesB: 82, seriesC: 108 },
+      { id: 'cl-5', category: 'JP-East (Tokyo)', seriesA: 56, seriesB: 71, seriesC: 94 },
+    ],
+    [ChartType.SLOPEGRAPH]: [
+      { id: 'sg-1', category: 'Financial Services', period1Value: 52, period2Value: 74 },
+      { id: 'sg-2', category: 'Healthcare Systems', period1Value: 38, period2Value: 61 },
+      { id: 'sg-3', category: 'Smart Manufacturing', period1Value: 44, period2Value: 56 },
+      { id: 'sg-4', category: 'Retail & Commerce', period1Value: 49, period2Value: 43 },
+      { id: 'sg-5', category: 'Global Logistics', period1Value: 29, period2Value: 48 },
+      { id: 'sg-6', category: 'Energy & Utilities', period1Value: 24, period2Value: 31 },
+    ],
+    [ChartType.BUMP]: [
+      { id: 'bp-1', entity: 'Apex Corp', ranks: { Q1: 3, Q2: 2, Q3: 1, Q4: 1 } },
+      { id: 'bp-2', entity: 'Vertex Labs', ranks: { Q1: 1, Q2: 1, Q3: 2, Q4: 3 } },
+      { id: 'bp-3', entity: 'Meridian Group', ranks: { Q1: 4, Q2: 3, Q3: 3, Q4: 2 } },
+      { id: 'bp-4', entity: 'Horizon Systems', ranks: { Q1: 2, Q2: 4, Q3: 5, Q4: 4 } },
+      { id: 'bp-5', entity: 'Solis Global', ranks: { Q1: 5, Q2: 5, Q3: 4, Q4: 5 } },
+    ],
+    [ChartType.BULLET]: [
+      { id: 'bl-1', metric: 'Net Revenue ($M)', actual: 268, target: 250, poorThreshold: 180, goodThreshold: 240 },
+      { id: 'bl-2', metric: 'Gross Margin (%)', actual: 72, target: 75, poorThreshold: 55, goodThreshold: 70 },
+      { id: 'bl-3', metric: 'Net Retention (%)', actual: 118, target: 115, poorThreshold: 95, goodThreshold: 110 },
+      { id: 'bl-4', metric: 'Enterprise CSAT', actual: 86, target: 90, poorThreshold: 70, goodThreshold: 85 },
+      { id: 'bl-5', metric: 'On-Time Delivery', actual: 94, target: 92, poorThreshold: 78, goodThreshold: 88 },
+    ],
+    [ChartType.SPAN]: [
+      { id: 'sp-1', category: 'Principal Engineer', minValue: 215, maxValue: 295, averageValue: 258 },
+      { id: 'sp-2', category: 'Staff Product Mgr', minValue: 195, maxValue: 265, averageValue: 232 },
+      { id: 'sp-3', category: 'Design Director', minValue: 185, maxValue: 250, averageValue: 218 },
+      { id: 'sp-4', category: 'Lead Data Scientist', minValue: 180, maxValue: 245, averageValue: 214 },
+      { id: 'sp-5', category: 'Solutions Architect', minValue: 165, maxValue: 225, averageValue: 196 },
+      { id: 'sp-6', category: 'Engineering Mgr', minValue: 190, maxValue: 260, averageValue: 226 },
+    ],
+  };
+}
+
+export const DEFAULT_CHART_COPY: Record<ChartType, { title: string; subtitle: string; footnote: string; suffix: string; prefix: string }> = {
+  [ChartType.BARBELL]: {
+    title: 'Operating Margin Shift by Business Unit',
+    subtitle: 'FY24 baseline vs. FY25 realized margin (%) across global segments',
+    footnote: 'Source: Corporate FP&A Annual Operating Review · Excludes one-time restructuring items',
+    prefix: '',
+    suffix: '%',
+  },
+  [ChartType.LOLLIPOP]: {
+    title: 'Net Promoter Score (NPS) by Customer Segment',
+    subtitle: 'Q4 enterprise sentiment benchmark (Scale: 0 to 100)',
+    footnote: 'Source: Q4 Customer Advisory Survey (n = 1,840 enterprise accounts)',
+    prefix: '',
+    suffix: '',
+  },
+  [ChartType.CLEVELAND]: {
+    title: 'Regional Cloud Edge Latency Benchmarks',
+    subtitle: 'Median response latency (ms) across core infrastructure tiers',
+    footnote: 'Source: Synthetic Global Observability Probes · P50 30-day rolling average',
+    prefix: '',
+    suffix: ' ms',
+  },
+  [ChartType.SLOPEGRAPH]: {
+    title: 'Enterprise Platform Adoption Trajectory',
+    subtitle: 'Percentage of Fortune 500 vertical accounts active in 2024 vs. 2025',
+    footnote: 'Source: Annual Vertical Market Penetration Audit',
+    prefix: '',
+    suffix: '%',
+  },
+  [ChartType.BUMP]: {
+    title: 'Competitive Market Share Rank Progression',
+    subtitle: 'Quarterly market position across top 5 category leaders (Rank 1 = Leader)',
+    footnote: 'Source: Quarterly Industry Analyst Leaderboard · Lower rank number indicates higher share',
+    prefix: '#',
+    suffix: '',
+  },
+  [ChartType.BULLET]: {
+    title: 'Q4 Strategic KPI Performance vs. Targets',
+    subtitle: 'Actual attainment against target markers and poor/satisfactory/good thresholds',
+    footnote: 'Source: Executive Operating Scorecard · Dark bar = Actual, Vertical tick = Plan Target',
+    prefix: '',
+    suffix: '',
+  },
+  [ChartType.SPAN]: {
+    title: 'Executive Compensation Band & Median Spread',
+    subtitle: 'Total cash compensation range ($K) showing floor, ceiling, and internal median',
+    footnote: 'Source: FY25 Global Compensation Benchmarking Study (USD Thousands)',
+    prefix: '$',
+    suffix: 'K',
+  },
+};
+
+export function createDefaultSettings(chartType: ChartType): ChartSettings {
+  const copy = DEFAULT_CHART_COPY[chartType];
+  return {
+    title: copy.title,
+    subtitle: copy.subtitle,
+    footnote: copy.footnote,
+    showGridlines: true,
+    showValues: true,
+    showLegend: true,
+    fontSize: 13,
+    dotRadius: 7,
+    lineThickness: 3,
+    numberFormat: 'standard',
+    decimalPlaces: 1,
+    valuePrefix: copy.prefix,
+    valueSuffix: copy.suffix,
+    lollipopOrientation: 'horizontal',
+    barbellColorMode: 'directional',
+    barbellStartLabel: 'FY24',
+    barbellEndLabel: 'FY25',
+    period1Label: '2024',
+    period2Label: '2025',
+    clevelandSeriesNames: ['API Gateway', 'Auth Edge', 'Storage Read'],
+    bumpPeriods: ['Q1', 'Q2', 'Q3', 'Q4'],
+  };
+}

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<deployment>
+  <project>
+    <name>executive-chart-studio</name>
+    <displayName>Executive Chart Studio</displayName>
+    <version>1.0.0</version>
+    <type>static-spa</type>
+    <runtime>client-side-only</runtime>
+  </project>
+  <githubPages>
+    <enabled>true</enabled>
+    <branch>gh-pages</branch>
+    <sourceDirectory>dist</sourceDirectory>
+    <basePath>./</basePath>
+    <nodeVersion>22</nodeVersion>
+    <buildCommand>npm ci &amp;&amp; npm run build</buildCommand>
+    <testCommand>npm test</testCommand>
+    <lintCommand>npm run lint</lintCommand>
+    <environment>
+      <variable name="GITHUB_PAGES">true</variable>
+    </environment>
+  </githubPages>
+  <assets>
+    <icon>public/icon.svg</icon>
+    <entryPoint>index.html</entryPoint>
+  </assets>
+  <security>
+    <externalApiCalls>false</externalApiCalls>
+    <secretsRequired>false</secretsRequired>
+  </security>
+</deployment>
