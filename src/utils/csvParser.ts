@@ -11,6 +11,8 @@ import {
   LollipopRow,
   SlopegraphRow,
   SpanRow,
+  TernaryRow,
+  VoronoiRow,
 } from '../types/chart';
 import { createRowId, sanitizeNumber, sanitizeOptionalNumber, sanitizeText } from './formatters';
 
@@ -340,6 +342,66 @@ export function parseCsvForChartType<K extends ChartType>(
         error: rows.length === 0 ? 'No valid Diverging Stacked Bar rows could be parsed.' : null,
       };
     }
+
+    case ChartType.TERNARY: {
+      const rows: TernaryRow[] = [];
+      rawRows.forEach((rec, idx) => {
+        const category = sanitizeText(pickField(rec, ['category', 'name', 'label', 'segment', 'product'], 0));
+        const rawA = pickField(rec, ['vara', 'a', 'top', 'rd', 'x'], 1);
+        const rawB = pickField(rec, ['varb', 'b', 'left', 'gtm', 'y'], 2);
+        const rawC = pickField(rec, ['varc', 'c', 'right', 'ops', 'z'], 3);
+        const rawSize = pickField(rec, ['size', 'weight', 'arr', 'value'], 4);
+        const rawGroup = pickField(rec, ['group', 'cluster', 'tier', 'series'], 5);
+        if (!category) {
+          warnings.push(`Row ${idx + 1}: Missing category name, skipped.`);
+          return;
+        }
+        if (!isStrictNumericToken(rawA) || !isStrictNumericToken(rawB) || !isStrictNumericToken(rawC)) {
+          warnings.push(`Row ${idx + 1} (${category}): Non-numeric ternary coordinate coerced to 0.`);
+        }
+        rows.push({
+          id: createRowId('tn'),
+          category,
+          varA: Math.max(0, sanitizeNumber(rawA, 0)),
+          varB: Math.max(0, sanitizeNumber(rawB, 0)),
+          varC: Math.max(0, sanitizeNumber(rawC, 0)),
+          size: Math.max(1, sanitizeNumber(rawSize, 40)),
+          group: sanitizeText(rawGroup, 'Core') || 'Core',
+        });
+      });
+      return {
+        rows: rows as ChartDatasetMap[K][number][],
+        warnings,
+        error: rows.length === 0 ? 'No valid Ternary Plot rows could be parsed.' : null,
+      };
+    }
+
+    case ChartType.VORONOI: {
+      const rows: VoronoiRow[] = [];
+      rawRows.forEach((rec, idx) => {
+        const category = sanitizeText(pickField(rec, ['category', 'group', 'parent', 'division'], 0));
+        const subcategory = sanitizeText(pickField(rec, ['subcategory', 'child', 'name', 'product', 'label'], 1));
+        const rawValue = pickField(rec, ['value', 'weight', 'size', 'revenue', 'amount'], 2);
+        if (!category || !subcategory) {
+          warnings.push(`Row ${idx + 1}: Missing Category or Subcategory, skipped.`);
+          return;
+        }
+        if (!isStrictNumericToken(rawValue)) {
+          warnings.push(`Row ${idx + 1} (${subcategory}): Non-numeric value coerced to 1.`);
+        }
+        rows.push({
+          id: createRowId('vr'),
+          category,
+          subcategory,
+          value: Math.max(0.01, sanitizeNumber(rawValue, 1)),
+        });
+      });
+      return {
+        rows: rows as ChartDatasetMap[K][number][],
+        warnings,
+        error: rows.length === 0 ? 'No valid Voronoi Treemap rows could be parsed.' : null,
+      };
+    }
   }
 }
 
@@ -421,6 +483,25 @@ export function serializeDatasetToCsv<K extends ChartType>(
           Neutral: r.neutral,
           Positive: r.positive,
           StrongPositive: r.strongPositive,
+        }))
+      );
+    case ChartType.TERNARY:
+      return Papa.unparse(
+        (rows as TernaryRow[]).map((r) => ({
+          Category: r.category,
+          VarA: r.varA,
+          VarB: r.varB,
+          VarC: r.varC,
+          Size: r.size,
+          Group: r.group,
+        }))
+      );
+    case ChartType.VORONOI:
+      return Papa.unparse(
+        (rows as VoronoiRow[]).map((r) => ({
+          Category: r.category,
+          Subcategory: r.subcategory,
+          Value: r.value,
         }))
       );
   }

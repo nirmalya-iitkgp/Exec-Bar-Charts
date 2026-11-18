@@ -4,7 +4,7 @@ import App from '../../App';
 import * as pptxExporter from '../../utils/pptxExporter';
 
 describe('Integration: Executive Chart Studio Workflows', () => {
-  it('switches across all 8 chart types and updates live SVG slide preview', () => {
+  it('switches across all 10 chart types and updates live SVG slide preview', () => {
     render(<App />);
 
     const select = screen.getByLabelText('Chart Type') as HTMLSelectElement;
@@ -18,6 +18,8 @@ describe('Integration: Executive Chart Studio Workflows', () => {
       { value: 'bullet', titlePattern: /Q4 Strategic KPI Performance/i },
       { value: 'span', titlePattern: /Executive Compensation Band/i },
       { value: 'diverging', titlePattern: /Q4 Employee Engagement/i },
+      { value: 'ternary', titlePattern: /Portfolio Resource Allocation Trade-Offs/i },
+      { value: 'voronoi', titlePattern: /FY25 Global Revenue Architecture/i },
       { value: 'barbell', titlePattern: /Operating Margin Shift/i },
     ];
 

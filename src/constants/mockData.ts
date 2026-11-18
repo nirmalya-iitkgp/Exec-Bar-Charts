@@ -57,6 +57,20 @@ export const CHART_METADATA: ChartMeta[] = [
     description: 'Center-aligned Likert & sentiment split anchored around a central zero baseline.',
     schemaHint: 'Category, StrongNegative, Negative, Neutral, Positive, StrongPositive',
   },
+  {
+    type: ChartType.TERNARY,
+    label: 'Ternary Plot',
+    shortLabel: 'Ternary',
+    description: 'Map three 100%-summed variables inside an equilateral triangle coordinate grid.',
+    schemaHint: 'Category, VarA, VarB, VarC, Size, Group',
+  },
+  {
+    type: ChartType.VORONOI,
+    label: 'Voronoi Treemap',
+    shortLabel: 'Voronoi',
+    description: 'Organic weighted polygonal partition with 2-level hierarchical containment.',
+    schemaHint: 'Category, Subcategory, Value',
+  },
 ];
 
 export function createInitialDatasets(): ChartDatasetMap {
@@ -122,6 +136,30 @@ export function createInitialDatasets(): ChartDatasetMap {
       { id: 'dv-5', category: 'Compensation Fairness', strongNegative: 16, negative: 22, neutral: 20, positive: 29, strongPositive: 13 },
       { id: 'dv-6', category: 'Work-Life Balance', strongNegative: 7, negative: 13, neutral: 16, positive: 38, strongPositive: 26 },
     ],
+    [ChartType.TERNARY]: [
+      { id: 'tn-1', category: 'AI Copilot Suite', varA: 62, varB: 26, varC: 12, size: 84, group: 'High Growth' },
+      { id: 'tn-2', category: 'Core Cloud Platform', varA: 45, varB: 25, varC: 30, size: 140, group: 'Core' },
+      { id: 'tn-3', category: 'Enterprise Security', varA: 52, varB: 30, varC: 18, size: 95, group: 'High Growth' },
+      { id: 'tn-4', category: 'Self-Serve Analytics', varA: 34, varB: 51, varC: 15, size: 58, group: 'High Growth' },
+      { id: 'tn-5', category: 'Managed Infrastructure', varA: 18, varB: 22, varC: 60, size: 112, group: 'Core' },
+      { id: 'tn-6', category: 'Partner Marketplace', varA: 24, varB: 54, varC: 22, size: 46, group: 'Emerging' },
+      { id: 'tn-7', category: 'Edge Observability', varA: 58, varB: 18, varC: 24, size: 64, group: 'Emerging' },
+      { id: 'tn-8', category: 'Legacy Support', varA: 14, varB: 16, varC: 70, size: 72, group: 'Core' },
+    ],
+    [ChartType.VORONOI]: [
+      { id: 'vr-1', category: 'Cloud & AI', subcategory: 'Compute Core', value: 145 },
+      { id: 'vr-2', category: 'Cloud & AI', subcategory: 'AI Inference', value: 112 },
+      { id: 'vr-3', category: 'Cloud & AI', subcategory: 'Data Lakehouse', value: 88 },
+      { id: 'vr-4', category: 'Enterprise Apps', subcategory: 'Finance ERP', value: 128 },
+      { id: 'vr-5', category: 'Enterprise Apps', subcategory: 'RevOps CRM', value: 94 },
+      { id: 'vr-6', category: 'Enterprise Apps', subcategory: 'Supply Chain', value: 68 },
+      { id: 'vr-7', category: 'Cybersecurity', subcategory: 'Zero Trust IAM', value: 82 },
+      { id: 'vr-8', category: 'Cybersecurity', subcategory: 'Cloud SIEM', value: 64 },
+      { id: 'vr-9', category: 'Cybersecurity', subcategory: 'Endpoint Shield', value: 46 },
+      { id: 'vr-10', category: 'Managed Services', subcategory: 'Advisory', value: 74 },
+      { id: 'vr-11', category: 'Managed Services', subcategory: '24/7 SRE Ops', value: 58 },
+      { id: 'vr-12', category: 'Managed Services', subcategory: 'Migration', value: 41 },
+    ],
   };
 }
 
@@ -182,6 +220,20 @@ export const DEFAULT_CHART_COPY: Record<ChartType, { title: string; subtitle: st
     prefix: '',
     suffix: '%',
   },
+  [ChartType.TERNARY]: {
+    title: 'Portfolio Resource Allocation Trade-Offs',
+    subtitle: 'Three-way investment split (%) across R&D, Go-to-Market, and Operations (bubble = ARR $M)',
+    footnote: 'Source: FY25 Strategic Portfolio Review · Axes normalize to 100% per product line',
+    prefix: '$',
+    suffix: 'M',
+  },
+  [ChartType.VORONOI]: {
+    title: 'FY25 Global Revenue Architecture ($M)',
+    subtitle: 'Hierarchical Voronoi partition across 4 operating divisions and 12 product lines',
+    footnote: 'Source: Consolidated Revenue Ledger ($1,000M Total) · Cell area proportional to revenue share',
+    prefix: '$',
+    suffix: 'M',
+  },
 };
 
 export function createDefaultSettings(chartType: ChartType): ChartSettings {
@@ -212,5 +264,9 @@ export function createDefaultSettings(chartType: ChartType): ChartSettings {
     divergingNormalize100: true,
     divergingLabels: ['Strongly Disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly Agree'],
     bulletShowTicks: true,
+    ternaryAxisLabels: ['Product R&D', 'Go-to-Market', 'Operations'],
+    ternaryShowDensity: true,
+    voronoiContainerShape: 'circle',
+    voronoiShowHierarchyBorders: true,
   };
 }

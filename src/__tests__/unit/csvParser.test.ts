@@ -4,7 +4,7 @@ import { ChartType } from '../../types/chart';
 import { parseCsvForChartType, serializeDatasetToCsv } from '../../utils/csvParser';
 
 describe('Unit: CSV Parser & Serializer', () => {
-  it('round-trips all 7 chart datasets through CSV serialize -> parse cleanly', () => {
+  it('round-trips all 10 chart datasets through CSV serialize -> parse cleanly', () => {
     const datasets = createInitialDatasets();
     (Object.values(ChartType) as ChartType[]).forEach((chartType) => {
       const settings = createDefaultSettings(chartType);
@@ -38,5 +38,18 @@ describe('Unit: CSV Parser & Serializer', () => {
     expect(res.error).toBeNull();
     expect(res.rows[0].averageValue).toBeNull();
     expect(res.rows[1].averageValue).toBe(170);
+  });
+
+  it('parses Ternary and Voronoi CSV inputs with default optional values', () => {
+    const ternaryCsv = 'Category,VarA,VarB,VarC,Size,Group\nAPAC,40,35,25,60,Growth';
+    const tRes = parseCsvForChartType(ChartType.TERNARY, ternaryCsv);
+    expect(tRes.error).toBeNull();
+    expect(tRes.rows[0]).toMatchObject({ category: 'APAC', varA: 40, varB: 35, varC: 25, size: 60, group: 'Growth' });
+
+    const voronoiCsv = 'Category,Subcategory,Value\nCloud,Compute,42\nCloud,Storage,18';
+    const vRes = parseCsvForChartType(ChartType.VORONOI, voronoiCsv);
+    expect(vRes.error).toBeNull();
+    expect(vRes.rows).toHaveLength(2);
+    expect(vRes.rows[0]).toMatchObject({ category: 'Cloud', subcategory: 'Compute', value: 42 });
   });
 });

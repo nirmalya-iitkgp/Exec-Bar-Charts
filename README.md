@@ -22,7 +22,7 @@
 
 ---
 
-## 📈 Supported Chart Types (8 Executive Schemas)
+## 📈 Supported Chart Types (10 Executive Schemas)
 
 | # | Chart Type | Data Schema | Best Used For |
 |---|---|---|---|
@@ -34,6 +34,8 @@
 | 6 | **Bullet Chart** | `Metric`, `Actual`, `Target`, `PoorThreshold`, `GoodThreshold` | KPI actuals vs. targets, qualitative bands & scale ticks |
 | 7 | **Span (Range) Chart** | `Category`, `MinValue`, `MaxValue`, `AverageValue?` | Min–max spread, salary bands, volatility with optional mean |
 | 8 | **Diverging Stacked Bar Chart** | `Category`, `StrongNegative`, `Negative`, `Neutral`, `Positive`, `StrongPositive` | Center-aligned Likert surveys & sentiment splits around zero |
+| 9 | **Ternary Plot** | `Category`, `VarA`, `VarB`, `VarC`, `Size`, `Group` | Three-variable composition mix summing to 100% with density halos |
+| 10 | **Voronoi Treemap** | `Category`, `Subcategory`, `Value` | Hierarchical polygonal partitions inside circular/hex/octagonal bounds |
 
 ---
 
@@ -48,7 +50,7 @@
   - 🟠 **Warm Terracotta**
   - ⚫ **Monochrome Graphite**
   - 🟣 **Vibrant Tech**
-- **Native PPTX Vector Export**: Powered by `pptxgenjs` — every dot is an editable `oval`, every connector is an editable `line`, every range/actual bar is an editable `rect`, and all titles/labels export as editable `Arial`/`Calibri` text boxes.
+- **Native PPTX Vector Export**: Powered by `pptxgenjs` — every dot is an editable `ellipse`, every connector is an editable `line`, every range/actual bar is an editable `rect`, every Voronoi cell is a native `custGeom` freeform polygon, and all titles/labels export as editable `Calibri` text boxes.
 
 ---
 
@@ -59,17 +61,18 @@ src/
 ├── types/chart.ts              # Strict TypeScript enums, schemas, and studio state types
 ├── constants/
 │   ├── palettes.ts             # 5 executive palettes + hex normalization helpers
-│   └── mockData.ts             # Realistic boardroom datasets for all 7 chart variants
+│   └── mockData.ts             # Realistic boardroom datasets for all 10 chart variants
 ├── utils/
 │   ├── formatters.ts           # Numeric formatting, clamping, and slide dimension math
 │   ├── csvParser.ts            # PapaParse CSV/TSV parser & schema-aware validator
-│   ├── chartGeometry.ts        # Shared D3-scale coordinate engine for SVG & PPTX
-│   └── pptxExporter.ts         # Native vector PPTX slide builder (ovals, lines, rects, text)
+│   ├── voronoiSolver.ts        # Deterministic 2D Power Diagram / Sutherland-Hodgman polygon solver
+│   ├── chartGeometry.ts        # Shared D3-scale & barycentric/Voronoi coordinate engine
+│   └── pptxExporter.ts         # Native vector PPTX slide builder (ellipses, lines, rects, custGeom)
 ├── components/
 │   ├── TopBar.tsx              # Branding, chart switcher, aspect toggle, PPTX export CTA
 │   ├── Sidebar/                # Data table, CSV importer, Palette picker, Settings panel
 │   ├── SlideCanvas.tsx         # Scaled slide frame & interactive readout layer
-│   └── charts/                 # Dedicated modular SVG renderers for all 7 chart types
+│   └── charts/                 # Dedicated modular SVG renderers for all 10 chart types
 └── __tests__/                  # Unit, integration, and Red Pill / Blue Pill test suites
 ```
 

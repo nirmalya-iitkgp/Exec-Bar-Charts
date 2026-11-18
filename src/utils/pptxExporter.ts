@@ -13,9 +13,12 @@ import {
   PaletteColors,
   SlopegraphRow,
   SpanRow,
+  TernaryRow,
+  VoronoiRow,
 } from '../types/chart';
 import { stripHashForPptx } from '../constants/palettes';
 import { getSlideDimensions } from './formatters';
+import { Point2D } from './voronoiSolver';
 import {
   computeBarbellGeometry,
   computeBulletGeometry,
@@ -25,6 +28,8 @@ import {
   computeLollipopGeometry,
   computeSlopegraphGeometry,
   computeSpanGeometry,
+  computeTernaryGeometry,
+  computeVoronoiGeometry,
   SlideFrameLayout,
 } from './chartGeometry';
 
@@ -79,17 +84,64 @@ function addVectorCircle(
   rIn: number,
   fillHex: string,
   strokeHex?: string,
-  strokeWidthPt = 1
+  strokeWidthPt = 1,
+  transparency?: number
 ) {
   slide.addShape(pptx.ShapeType.ellipse, {
     x: cxIn - rIn,
     y: cyIn - rIn,
     w: rIn * 2,
     h: rIn * 2,
-    fill: { color: stripHashForPptx(fillHex) },
+    fill: transparency !== undefined
+      ? { color: stripHashForPptx(fillHex), transparency }
+      : { color: stripHashForPptx(fillHex) },
     line: strokeHex
       ? { color: stripHashForPptx(strokeHex), width: strokeWidthPt }
       : { color: stripHashForPptx(fillHex), width: 0 },
+  });
+}
+
+function addVectorPolygon(
+  slide: PptxGenJS.Slide,
+  pptx: PptxGenJS,
+  polygonPx: Point2D[],
+  toInX: (px: number) => number,
+  toInY: (px: number) => number,
+  fillHex: string | null,
+  strokeHex: string,
+  strokeWidthPt: number
+) {
+  if (polygonPx.length < 3) return;
+  const ptsIn = polygonPx.map((p) => ({ x: toInX(p.x), y: toInY(p.y) }));
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const pt of ptsIn) {
+    if (pt.x < minX) minX = pt.x;
+    if (pt.y < minY) minY = pt.y;
+    if (pt.x > maxX) maxX = pt.x;
+    if (pt.y > maxY) maxY = pt.y;
+  }
+  const w = Math.max(0.01, Number((maxX - minX).toFixed(4)));
+  const h = Math.max(0.01, Number((maxY - minY).toFixed(4)));
+
+  const points: PptxGenJS.ShapeProps['points'] = ptsIn.map((pt, idx) => ({
+    x: Number((pt.x - minX).toFixed(4)),
+    y: Number((pt.y - minY).toFixed(4)),
+    ...(idx === 0 ? { moveTo: true } : {}),
+  }));
+  points.push({ close: true });
+
+  const custGeomShape = 'custGeom' as unknown as PptxGenJS.ShapeType;
+  slide.addShape(custGeomShape, {
+    x: Number(minX.toFixed(4)),
+    y: Number(minY.toFixed(4)),
+    w,
+    h,
+    points,
+    ...(fillHex ? { fill: { color: stripHashForPptx(fillHex) } } : {}),
+    line: { color: stripHashForPptx(strokeHex), width: Math.max(0.5, strokeWidthPt) },
   });
 }
 
@@ -1164,6 +1216,290 @@ export function buildPptxPresentation({
         colors.text,
         1.5
       );
+      break;
+    }
+
+    case ChartType.TERNARY: {
+      const rows = datasets[ChartType.TERNARY] as TernaryRow[];
+      const geom = computeTernaryGeometry(rows, aspectRatio, settings, colors);
+      addSlideChrome(slide, geom.frame, toInX, toInY, settings, colors);
+
+      if (settings.showLegend) {
+        const legendSpacing = Math.min(165, Math.floor((geom.frame.svgWidth - 96) / Math.max(1, geom.groups.length)));
+        geom.groups.forEach((grp, idx) => {
+          const x = 48 + idx * legendSpacing;
+          addVectorCircle(slide, pptx, toInX(x + 5), toInY(geom.frame.legendY), toInX(5), grp.color);
+          slide.addText(grp.group, {
+            x: toInX(x + 15),
+            y: toInY(geom.frame.legendY - 10),
+            w: toInX(Math.max(80, legendSpacing - 18)),
+            h: toInY(20),
+            fontFace: 'Calibri',
+            fontSize: 9.5,
+            color: stripHashForPptx(colors.mutedText),
+            margin: 0,
+          });
+        });
+      }
+
+      if (settings.showGridlines) {
+        geom.gridLines.forEach((gl) => {
+          addVectorLine(
+            slide,
+            pptx,
+            toInX(gl.x1),
+            toInY(gl.y1),
+            toInX(gl.x2),
+            toInY(gl.y2),
+            colors.gridline,
+            0.75,
+            'sysDot'
+          );
+          const tickW = 38;
+          const align = gl.tickAnchor === 'end' ? 'right' : gl.tickAnchor === 'start' ? 'left' : 'center';
+          const tickX =
+            align === 'right'
+              ? gl.tickX - tickW
+              : align === 'left'
+                ? gl.tickX
+                : gl.tickX - tickW / 2;
+          slide.addText(gl.tickLabel, {
+            x: toInX(tickX),
+            y: toInY(gl.tickY - 9),
+            w: toInX(tickW),
+            h: toInY(16),
+            fontFace: 'Calibri',
+            fontSize: 8,
+            align,
+            color: stripHashForPptx(colors.mutedText),
+            margin: 0,
+          });
+        });
+      }
+
+      // Triangle boundary as native vector lines
+      addVectorLine(
+        slide,
+        pptx,
+        toInX(geom.vertexA.x),
+        toInY(geom.vertexA.y),
+        toInX(geom.vertexB.x),
+        toInY(geom.vertexB.y),
+        colors.text,
+        1.5
+      );
+      addVectorLine(
+        slide,
+        pptx,
+        toInX(geom.vertexB.x),
+        toInY(geom.vertexB.y),
+        toInX(geom.vertexC.x),
+        toInY(geom.vertexC.y),
+        colors.text,
+        1.5
+      );
+      addVectorLine(
+        slide,
+        pptx,
+        toInX(geom.vertexC.x),
+        toInY(geom.vertexC.y),
+        toInX(geom.vertexA.x),
+        toInY(geom.vertexA.y),
+        colors.text,
+        1.5
+      );
+
+      // Vertex labels
+      slide.addText(`${geom.labelA} (100%)`, {
+        x: toInX(geom.vertexA.x - 110),
+        y: toInY(geom.vertexA.y - 30),
+        w: toInX(220),
+        h: toInY(22),
+        fontFace: 'Calibri',
+        fontSize: 10.5,
+        bold: true,
+        align: 'center',
+        color: stripHashForPptx(colors.text),
+        margin: 0,
+      });
+      slide.addText(`${geom.labelB} (100%)`, {
+        x: toInX(geom.vertexB.x - 180),
+        y: toInY(geom.vertexB.y + 10),
+        w: toInX(180),
+        h: toInY(22),
+        fontFace: 'Calibri',
+        fontSize: 10.5,
+        bold: true,
+        align: 'right',
+        color: stripHashForPptx(colors.text),
+        margin: 0,
+      });
+      slide.addText(`${geom.labelC} (100%)`, {
+        x: toInX(geom.vertexC.x),
+        y: toInY(geom.vertexC.y + 10),
+        w: toInX(180),
+        h: toInY(22),
+        fontFace: 'Calibri',
+        fontSize: 10.5,
+        bold: true,
+        align: 'left',
+        color: stripHashForPptx(colors.text),
+        margin: 0,
+      });
+
+      if (settings.ternaryShowDensity) {
+        geom.points.forEach((pt) => {
+          addVectorCircle(
+            slide,
+            pptx,
+            toInX(pt.x),
+            toInY(pt.y),
+            toInX(pt.densityRadius),
+            pt.color,
+            undefined,
+            0,
+            88
+          );
+          addVectorCircle(
+            slide,
+            pptx,
+            toInX(pt.x),
+            toInY(pt.y),
+            toInX(pt.densityRadius * 0.62),
+            pt.color,
+            undefined,
+            0,
+            85
+          );
+        });
+      }
+
+      geom.points.forEach((pt) => {
+        addVectorCircle(slide, pptx, toInX(pt.x), toInY(pt.y), toInX(pt.radius), pt.color, '#FFFFFF', 1.25);
+        if (settings.showValues) {
+          slide.addText(pt.category, {
+            x: toInX(pt.x - 65),
+            y: toInY(pt.y - pt.radius - 19),
+            w: toInX(130),
+            h: toInY(16),
+            fontFace: 'Calibri',
+            fontSize: Math.max(8, labelPt - 1),
+            bold: true,
+            align: 'center',
+            color: stripHashForPptx(colors.text),
+            margin: 0,
+          });
+        }
+      });
+      break;
+    }
+
+    case ChartType.VORONOI: {
+      const rows = datasets[ChartType.VORONOI] as VoronoiRow[];
+      const geom = computeVoronoiGeometry(rows, aspectRatio, settings, colors);
+      addSlideChrome(slide, geom.frame, toInX, toInY, settings, colors);
+
+      if (settings.showLegend) {
+        slide.addText('Division Breakdown', {
+          x: toInX(48),
+          y: toInY(geom.frame.plot.top + 4),
+          w: toInX(210),
+          h: toInY(18),
+          fontFace: 'Calibri',
+          fontSize: 9.5,
+          bold: true,
+          color: stripHashForPptx(colors.mutedText),
+          margin: 0,
+        });
+        geom.parents.slice(0, 8).forEach((parent, idx) => {
+          const rowY = geom.frame.plot.top + 42 + idx * 36;
+          slide.addShape(pptx.ShapeType.rect, {
+            x: toInX(48),
+            y: toInY(rowY - 10),
+            w: toInX(12),
+            h: toInY(12),
+            fill: { color: stripHashForPptx(parent.color) },
+            line: { color: stripHashForPptx(parent.color), width: 0 },
+          });
+          slide.addText(parent.category, {
+            x: toInX(66),
+            y: toInY(rowY - 12),
+            w: toInX(190),
+            h: toInY(16),
+            fontFace: 'Calibri',
+            fontSize: 9.5,
+            bold: true,
+            color: stripHashForPptx(colors.text),
+            margin: 0,
+          });
+          slide.addText(`${parent.totalLabel} (${parent.sharePct.toFixed(1)}%)`, {
+            x: toInX(66),
+            y: toInY(rowY + 3),
+            w: toInX(190),
+            h: toInY(14),
+            fontFace: 'Calibri',
+            fontSize: 8.5,
+            color: stripHashForPptx(colors.mutedText),
+            margin: 0,
+          });
+        });
+      }
+
+      // Child Voronoi polygonal cells
+      geom.parents.forEach((parent) => {
+        parent.children.forEach((cell) => {
+          if (cell.polygon.length < 3) return;
+          addVectorPolygon(slide, pptx, cell.polygon, toInX, toInY, cell.fillColor, '#FFFFFF', 1.1);
+
+          const canShowName = cell.bboxWidth >= 56 && cell.bboxHeight >= 30;
+          const canShowValue = cell.bboxWidth >= 66 && cell.bboxHeight >= 46;
+          if (settings.showValues && canShowName) {
+            const boxW = Math.max(46, cell.bboxWidth * 0.85);
+            const maxChars = Math.max(5, Math.floor(cell.bboxWidth / 7.5));
+            const displayTitle =
+              cell.subcategory.length > maxChars
+                ? `${cell.subcategory.slice(0, maxChars - 1)}…`
+                : cell.subcategory;
+            slide.addText(displayTitle, {
+              x: toInX(cell.centroid.x - boxW / 2),
+              y: toInY(canShowValue ? cell.centroid.y - 16 : cell.centroid.y - 8),
+              w: toInX(boxW),
+              h: toInY(16),
+              fontFace: 'Calibri',
+              fontSize: Math.max(8, Math.min(10, labelPt - 1)),
+              bold: true,
+              align: 'center',
+              valign: 'middle',
+              color: stripHashForPptx(cell.textColor),
+              margin: 0,
+            });
+            if (canShowValue) {
+              slide.addText(`${cell.valueLabel} · ${cell.sharePct.toFixed(0)}%`, {
+                x: toInX(cell.centroid.x - boxW / 2),
+                y: toInY(cell.centroid.y + 1),
+                w: toInX(boxW),
+                h: toInY(14),
+                fontFace: 'Calibri',
+                fontSize: 8,
+                align: 'center',
+                valign: 'middle',
+                color: stripHashForPptx(cell.textColor),
+                margin: 0,
+              });
+            }
+          }
+        });
+      });
+
+      // Parent hierarchical containment borders
+      if (settings.voronoiShowHierarchyBorders) {
+        geom.parents.forEach((parent) => {
+          addVectorPolygon(slide, pptx, parent.polygon, toInX, toInY, null, colors.text, 1.75);
+        });
+      }
+
+      // Outer container polygon border
+      addVectorPolygon(slide, pptx, geom.containerPolygon, toInX, toInY, null, colors.text, 1.5);
       break;
     }
   }

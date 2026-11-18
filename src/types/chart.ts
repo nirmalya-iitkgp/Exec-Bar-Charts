@@ -7,6 +7,8 @@ export enum ChartType {
   BULLET = 'bullet',
   SPAN = 'span',
   DIVERGING = 'diverging',
+  TERNARY = 'ternary',
+  VORONOI = 'voronoi',
 }
 
 export type AspectRatio = '16:9' | '4:3';
@@ -76,6 +78,23 @@ export interface DivergingRow {
   strongPositive: number;
 }
 
+export interface TernaryRow {
+  id: string;
+  category: string;
+  varA: number;
+  varB: number;
+  varC: number;
+  size: number;
+  group: string;
+}
+
+export interface VoronoiRow {
+  id: string;
+  category: string;
+  subcategory: string;
+  value: number;
+}
+
 export interface ChartDatasetMap {
   [ChartType.BARBELL]: BarbellRow[];
   [ChartType.LOLLIPOP]: LollipopRow[];
@@ -85,6 +104,8 @@ export interface ChartDatasetMap {
   [ChartType.BULLET]: BulletRow[];
   [ChartType.SPAN]: SpanRow[];
   [ChartType.DIVERGING]: DivergingRow[];
+  [ChartType.TERNARY]: TernaryRow[];
+  [ChartType.VORONOI]: VoronoiRow[];
 }
 
 export interface PaletteColors {
@@ -133,6 +154,10 @@ export interface ChartSettings {
   divergingNormalize100: boolean;
   divergingLabels: [string, string, string, string, string];
   bulletShowTicks: boolean;
+  ternaryAxisLabels: [string, string, string];
+  ternaryShowDensity: boolean;
+  voronoiContainerShape: 'circle' | 'hexagon' | 'octagon';
+  voronoiShowHierarchyBorders: boolean;
 }
 
 export interface ChartMeta {

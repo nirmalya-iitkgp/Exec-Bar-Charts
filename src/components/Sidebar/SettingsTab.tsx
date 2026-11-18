@@ -404,6 +404,75 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           </div>
         </div>
       )}
+
+      {chartType === ChartType.TERNARY && (
+        <div className="border-t border-slate-200 pt-5 space-y-3">
+          <h2 className="text-xs font-semibold text-slate-800">Ternary Vertex Axes &amp; Density</h2>
+          <div className="space-y-2">
+            {(['Top Vertex (Var A)', 'Bottom-Left (Var B)', 'Bottom-Right (Var C)'] as const).map(
+              (axisTitle, idx) => (
+                <div key={axisTitle}>
+                  <label className="block text-[11px] text-slate-600 mb-1">{axisTitle}</label>
+                  <input
+                    type="text"
+                    aria-label={axisTitle}
+                    value={settings.ternaryAxisLabels[idx]}
+                    onChange={(e) => {
+                      const next = [...settings.ternaryAxisLabels] as [string, string, string];
+                      next[idx] = e.target.value;
+                      onUpdateSettings({ ternaryAxisLabels: next });
+                    }}
+                    className="w-full px-2.5 py-1 text-xs border border-slate-300 rounded"
+                  />
+                </div>
+              )
+            )}
+          </div>
+          <label className="flex items-center justify-between text-xs text-slate-700 cursor-pointer pt-1">
+            <span>Show Density Halos</span>
+            <input
+              type="checkbox"
+              checked={settings.ternaryShowDensity}
+              onChange={(e) => onUpdateSettings({ ternaryShowDensity: e.target.checked })}
+              className="w-4 h-4 rounded border-slate-300 text-blue-700 focus:ring-blue-600"
+            />
+          </label>
+        </div>
+      )}
+
+      {chartType === ChartType.VORONOI && (
+        <div className="border-t border-slate-200 pt-5 space-y-3">
+          <h2 className="text-xs font-semibold text-slate-800">Voronoi Container &amp; Hierarchy</h2>
+          <div>
+            <span className="block text-[11px] font-medium text-slate-600 mb-1.5">Container Boundary</span>
+            <div className="grid grid-cols-3 gap-1.5">
+              {(['circle', 'hexagon', 'octagon'] as const).map((shape) => (
+                <button
+                  key={shape}
+                  type="button"
+                  onClick={() => onUpdateSettings({ voronoiContainerShape: shape })}
+                  className={`py-1.5 px-2 text-xs font-medium rounded-md border capitalize cursor-pointer ${
+                    settings.voronoiContainerShape === shape
+                      ? 'bg-blue-50 border-blue-600 text-blue-800'
+                      : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
+                  }`}
+                >
+                  {shape}
+                </button>
+              ))}
+            </div>
+          </div>
+          <label className="flex items-center justify-between text-xs text-slate-700 cursor-pointer pt-1">
+            <span>Show Parent Division Borders</span>
+            <input
+              type="checkbox"
+              checked={settings.voronoiShowHierarchyBorders}
+              onChange={(e) => onUpdateSettings({ voronoiShowHierarchyBorders: e.target.checked })}
+              className="w-4 h-4 rounded border-slate-300 text-blue-700 focus:ring-blue-600"
+            />
+          </label>
+        </div>
+      )}
     </div>
   );
 };

@@ -11,6 +11,8 @@ import {
   computeLollipopGeometry,
   computeSlopegraphGeometry,
   computeSpanGeometry,
+  computeTernaryGeometry,
+  computeVoronoiGeometry,
 } from '../../utils/chartGeometry';
 import { parseCsvForChartType } from '../../utils/csvParser';
 import { buildPptxPresentation } from '../../utils/pptxExporter';
@@ -47,7 +49,7 @@ describe('Blue Pill Tests: Nominal Executive Workflows', () => {
 });
 
 describe('Red Pill Tests: Adversarial, Malformed & Extreme Edge Cases', () => {
-  it('handles 0 rows cleanly across all 7 geometry calculators and PPTX exporter', () => {
+  it('handles 0 rows cleanly across all 10 geometry calculators and PPTX exporter', () => {
     const emptyDatasets = {
       [ChartType.BARBELL]: [],
       [ChartType.LOLLIPOP]: [],
@@ -57,6 +59,8 @@ describe('Red Pill Tests: Adversarial, Malformed & Extreme Edge Cases', () => {
       [ChartType.BULLET]: [],
       [ChartType.SPAN]: [],
       [ChartType.DIVERGING]: [],
+      [ChartType.TERNARY]: [],
+      [ChartType.VORONOI]: [],
     };
     const colors = EXECUTIVE_PALETTES[0].colors;
 
@@ -83,6 +87,12 @@ describe('Red Pill Tests: Adversarial, Malformed & Extreme Edge Cases', () => {
     ).not.toThrow();
     expect(() =>
       computeDivergingGeometry([], '16:9', createDefaultSettings(ChartType.DIVERGING), colors)
+    ).not.toThrow();
+    expect(() =>
+      computeTernaryGeometry([], '16:9', createDefaultSettings(ChartType.TERNARY), colors)
+    ).not.toThrow();
+    expect(() =>
+      computeVoronoiGeometry([], '16:9', createDefaultSettings(ChartType.VORONOI), colors)
     ).not.toThrow();
 
     (Object.values(ChartType) as ChartType[]).forEach((chartType) => {
@@ -188,5 +198,35 @@ describe('Red Pill Tests: Adversarial, Malformed & Extreme Edge Cases', () => {
         expect(Number.isFinite(seg.width)).toBe(true);
       });
     });
+  });
+
+  it('survives zero-sum Ternary rows, NaN weights, and single-row Voronoi treemaps safely', () => {
+    const colors = EXECUTIVE_PALETTES[0].colors;
+    const hostileTernary = computeTernaryGeometry(
+      [
+        { id: 't1', category: 'All Zero', varA: 0, varB: 0, varC: 0, size: -5, group: '' },
+        { id: 't2', category: 'NaN Mix', varA: Number.NaN, varB: -10, varC: 40, size: Number.NaN, group: 'Core' },
+      ],
+      '16:9',
+      createDefaultSettings(ChartType.TERNARY),
+      colors
+    );
+    expect(hostileTernary.points).toHaveLength(2);
+    hostileTernary.points.forEach((pt) => {
+      expect(Number.isFinite(pt.x)).toBe(true);
+      expect(Number.isFinite(pt.y)).toBe(true);
+      expect(Number.isFinite(pt.radius)).toBe(true);
+      expect(pt.radius).toBeGreaterThan(0);
+    });
+
+    const singleVoronoi = computeVoronoiGeometry(
+      [{ id: 'v1', category: 'Solo', subcategory: 'Only', value: -99 }],
+      '4:3',
+      { ...createDefaultSettings(ChartType.VORONOI), voronoiContainerShape: 'octagon' },
+      colors
+    );
+    expect(singleVoronoi.parents).toHaveLength(1);
+    expect(singleVoronoi.parents[0].children).toHaveLength(1);
+    expect(singleVoronoi.parents[0].children[0].polygon.length).toBe(8);
   });
 });

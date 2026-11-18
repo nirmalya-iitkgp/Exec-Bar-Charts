@@ -3,6 +3,7 @@ import { blendHexColors, EXECUTIVE_PALETTES, normalizeHexColor, stripHashForPptx
 import { createDefaultSettings, createInitialDatasets } from '../../constants/mockData';
 import { ChartType } from '../../types/chart';
 import {
+  barycentricToCartesian,
   computeBarbellGeometry,
   computeBulletGeometry,
   computeBumpGeometry,
@@ -11,7 +12,14 @@ import {
   computeLollipopGeometry,
   computeSlopegraphGeometry,
   computeSpanGeometry,
+  computeTernaryGeometry,
+  computeVoronoiGeometry,
 } from '../../utils/chartGeometry';
+import {
+  createRegularPolygon,
+  partitionPolygonWeighted,
+  polygonArea,
+} from '../../utils/voronoiSolver';
 import { formatNumericValue, getSlideDimensions } from '../../utils/formatters';
 
 const colors = EXECUTIVE_PALETTES[0].colors;
@@ -173,5 +181,62 @@ describe('Unit: Chart Geometry Engine & Formatters', () => {
     expect(blendHexColors('#000000', '#FFFFFF', 0)).toBe('#000000');
     expect(blendHexColors('#000000', '#FFFFFF', 1)).toBe('#FFFFFF');
     expect(blendHexColors('#000000', '#FFFFFF', 0.5)).toBe('#808080');
+  });
+
+  it('maps barycentric ternary coordinates to exact triangle vertices and interior points', () => {
+    const vA = { x: 480, y: 120 };
+    const vB = { x: 280, y: 460 };
+    const vC = { x: 680, y: 460 };
+
+    expect(barycentricToCartesian(100, 0, 0, vA, vB, vC)).toEqual(vA);
+    expect(barycentricToCartesian(0, 100, 0, vA, vB, vC)).toEqual(vB);
+    expect(barycentricToCartesian(0, 0, 100, vA, vB, vC)).toEqual(vC);
+
+    const center = barycentricToCartesian(1, 1, 1, vA, vB, vC);
+    expect(center.x).toBeCloseTo((vA.x + vB.x + vC.x) / 3, 5);
+    expect(center.y).toBeCloseTo((vA.y + vB.y + vC.y) / 3, 5);
+
+    const datasets = createInitialDatasets();
+    const settings = createDefaultSettings(ChartType.TERNARY);
+    const geom = computeTernaryGeometry(datasets[ChartType.TERNARY], '16:9', settings, colors);
+    expect(geom.gridLines).toHaveLength(12); // 4 levels x 3 axes
+    expect(geom.points).toHaveLength(datasets[ChartType.TERNARY].length);
+    geom.points.forEach((pt) => {
+      expect(pt.pctA + pt.pctB + pt.pctC).toBeCloseTo(100, 1);
+      expect(pt.y).toBeGreaterThanOrEqual(geom.vertexA.y - 0.1);
+      expect(pt.y).toBeLessThanOrEqual(geom.vertexB.y + 0.1);
+    });
+  });
+
+  it('partitions convex polygons deterministically with area conservation and hierarchical Voronoi containment', () => {
+    const hex = createRegularPolygon(400, 300, 180, 6);
+    const hexArea = polygonArea(hex);
+    const parts = partitionPolygonWeighted(hex, [
+      { id: 'a', weight: 50 },
+      { id: 'b', weight: 30 },
+      { id: 'c', weight: 20 },
+    ]);
+
+    expect(parts).toHaveLength(3);
+    const sumArea = parts.reduce((acc, p) => acc + p.area, 0);
+    expect(sumArea).toBeCloseTo(hexArea, 1);
+    parts.forEach((p) => {
+      expect(p.polygon.length).toBeGreaterThanOrEqual(3);
+      expect(p.area).toBeGreaterThan(0);
+    });
+
+    const datasets = createInitialDatasets();
+    const voronoiGeom = computeVoronoiGeometry(
+      datasets[ChartType.VORONOI],
+      '16:9',
+      createDefaultSettings(ChartType.VORONOI),
+      colors
+    );
+    expect(voronoiGeom.parents.length).toBeGreaterThanOrEqual(3);
+    const containerArea = polygonArea(voronoiGeom.containerPolygon);
+    const childrenArea = voronoiGeom.parents
+      .flatMap((p) => p.children)
+      .reduce((acc, c) => acc + polygonArea(c.polygon), 0);
+    expect(childrenArea).toBeCloseTo(containerArea, 0);
   });
 });

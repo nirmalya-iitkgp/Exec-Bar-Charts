@@ -11,9 +11,17 @@ import {
   PaletteColors,
   SlopegraphRow,
   SpanRow,
+  TernaryRow,
+  VoronoiRow,
 } from '../types/chart';
 import { blendHexColors, getSeriesColors } from '../constants/palettes';
 import { formatNumericValue, getSlideDimensions, sanitizeNumber } from './formatters';
+import {
+  createRegularPolygon,
+  partitionPolygonWeighted,
+  Point2D,
+  Polygon2D,
+} from './voronoiSolver';
 
 export interface PlotBox {
   left: number;
@@ -935,5 +943,370 @@ export function computeDivergingGeometry(
     ticks,
     legendItems,
     items,
+  };
+}
+
+/* 9. TERNARY PLOT GEOMETRY */
+export interface TernaryGridLine {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  axis: 'A' | 'B' | 'C';
+  pct: number;
+  tickX: number;
+  tickY: number;
+  tickAnchor: 'start' | 'end' | 'middle';
+  tickLabel: string;
+}
+
+export interface TernaryPointGeometry {
+  id: string;
+  category: string;
+  group: string;
+  x: number;
+  y: number;
+  radius: number;
+  densityRadius: number;
+  color: string;
+  pctA: number;
+  pctB: number;
+  pctC: number;
+  size: number;
+  sizeLabel: string;
+}
+
+export interface TernaryGroupLegend {
+  group: string;
+  color: string;
+}
+
+export interface TernaryGeometry {
+  frame: SlideFrameLayout;
+  vertexA: Point2D; // Top (100% VarA)
+  vertexB: Point2D; // Bottom-left (100% VarB)
+  vertexC: Point2D; // Bottom-right (100% VarC)
+  labelA: string;
+  labelB: string;
+  labelC: string;
+  gridLines: TernaryGridLine[];
+  points: TernaryPointGeometry[];
+  groups: TernaryGroupLegend[];
+}
+
+export function barycentricToCartesian(
+  a: number,
+  b: number,
+  c: number,
+  vA: Point2D,
+  vB: Point2D,
+  vC: Point2D
+): Point2D {
+  const sa = Math.max(0, Number.isFinite(a) ? a : 0);
+  const sb = Math.max(0, Number.isFinite(b) ? b : 0);
+  const sc = Math.max(0, Number.isFinite(c) ? c : 0);
+  const sum = sa + sb + sc;
+  const na = sum > 0 ? sa / sum : 1 / 3;
+  const nb = sum > 0 ? sb / sum : 1 / 3;
+  const nc = sum > 0 ? sc / sum : 1 / 3;
+  return {
+    x: na * vA.x + nb * vB.x + nc * vC.x,
+    y: na * vA.y + nb * vB.y + nc * vC.y,
+  };
+}
+
+export function computeTernaryGeometry(
+  rows: TernaryRow[],
+  aspectRatio: AspectRatio,
+  settings: ChartSettings,
+  colors: PaletteColors
+): TernaryGeometry {
+  const frame = computeSlideFrameLayout(aspectRatio, settings, {
+    left: 60,
+    right: 900,
+    top: settings.subtitle ? 128 : 104,
+    bottom: aspectRatio === '4:3' ? 642 : 464,
+  });
+
+  const maxTriHeight = Math.max(120, frame.plot.height - 34);
+  const maxTriSide = Math.min(frame.plot.width - 140, (maxTriHeight * 2) / Math.sqrt(3));
+  const side = Math.max(140, maxTriSide);
+  const triHeight = (side * Math.sqrt(3)) / 2;
+  const cx = (frame.plot.left + frame.plot.right) / 2;
+  const topY = frame.plot.top + (frame.plot.height - triHeight) / 2;
+  const bottomY = topY + triHeight;
+
+  const vertexA: Point2D = { x: cx, y: topY };
+  const vertexB: Point2D = { x: cx - side / 2, y: bottomY };
+  const vertexC: Point2D = { x: cx + side / 2, y: bottomY };
+
+  const gridLevels = [0.2, 0.4, 0.6, 0.8];
+  const gridLines: TernaryGridLine[] = [];
+
+  gridLevels.forEach((t) => {
+    const pct = Math.round(t * 100);
+    // Constant A = t (horizontal lines)
+    const a1 = barycentricToCartesian(t, 1 - t, 0, vertexA, vertexB, vertexC);
+    const a2 = barycentricToCartesian(t, 0, 1 - t, vertexA, vertexB, vertexC);
+    gridLines.push({
+      x1: a1.x,
+      y1: a1.y,
+      x2: a2.x,
+      y2: a2.y,
+      axis: 'A',
+      pct,
+      tickX: a1.x - 8,
+      tickY: a1.y + 4,
+      tickAnchor: 'end',
+      tickLabel: `${pct}%`,
+    });
+
+    // Constant B = t (parallel to AC)
+    const b1 = barycentricToCartesian(1 - t, t, 0, vertexA, vertexB, vertexC);
+    const b2 = barycentricToCartesian(0, t, 1 - t, vertexA, vertexB, vertexC);
+    gridLines.push({
+      x1: b1.x,
+      y1: b1.y,
+      x2: b2.x,
+      y2: b2.y,
+      axis: 'B',
+      pct,
+      tickX: b2.x,
+      tickY: b2.y + 15,
+      tickAnchor: 'middle',
+      tickLabel: `${pct}%`,
+    });
+
+    // Constant C = t (parallel to AB)
+    const c1 = barycentricToCartesian(1 - t, 0, t, vertexA, vertexB, vertexC);
+    const c2 = barycentricToCartesian(0, 1 - t, t, vertexA, vertexB, vertexC);
+    gridLines.push({
+      x1: c1.x,
+      y1: c1.y,
+      x2: c2.x,
+      y2: c2.y,
+      axis: 'C',
+      pct,
+      tickX: c1.x + 8,
+      tickY: c1.y + 4,
+      tickAnchor: 'start',
+      tickLabel: `${pct}%`,
+    });
+  });
+
+  const paletteCycle = getSeriesColors(colors);
+  const uniqueGroups: string[] = [];
+  rows.forEach((r) => {
+    const g = (r.group || 'Core').trim() || 'Core';
+    if (!uniqueGroups.includes(g)) uniqueGroups.push(g);
+  });
+  const groupColorMap = new Map<string, string>();
+  uniqueGroups.forEach((g, idx) => {
+    groupColorMap.set(g, paletteCycle[idx % paletteCycle.length]);
+  });
+
+  const sizes = rows.map((r) => Math.max(1, sanitizeNumber(r.size, 20)));
+  const maxSize = Math.max(1, ...sizes);
+  const minSize = Math.min(...sizes);
+
+  const points: TernaryPointGeometry[] = rows.map((row, i) => {
+    const sa = Math.max(0, sanitizeNumber(row.varA, 0));
+    const sb = Math.max(0, sanitizeNumber(row.varB, 0));
+    const sc = Math.max(0, sanitizeNumber(row.varC, 0));
+    const sum = sa + sb + sc;
+    const pctA = sum > 0 ? (sa / sum) * 100 : 33.3;
+    const pctB = sum > 0 ? (sb / sum) * 100 : 33.3;
+    const pctC = sum > 0 ? (sc / sum) * 100 : 33.3;
+
+    const pt = barycentricToCartesian(sa, sb, sc, vertexA, vertexB, vertexC);
+    const sz = Math.max(1, sanitizeNumber(row.size, 20));
+    const normSize = maxSize === minSize ? 0.5 : (sz - minSize) / (maxSize - minSize);
+    const radius = Math.max(4, settings.dotRadius * (0.75 + normSize * 0.95));
+    const densityRadius = radius * 2.5;
+    const group = (row.group || 'Core').trim() || 'Core';
+
+    return {
+      id: row.id,
+      category: row.category || `Item ${i + 1}`,
+      group,
+      x: pt.x,
+      y: pt.y,
+      radius,
+      densityRadius,
+      color: groupColorMap.get(group) ?? colors.primary,
+      pctA,
+      pctB,
+      pctC,
+      size: sz,
+      sizeLabel: formatNumericValue(sz, settings),
+    };
+  });
+
+  const groups: TernaryGroupLegend[] = uniqueGroups.map((group) => ({
+    group,
+    color: groupColorMap.get(group) ?? colors.primary,
+  }));
+
+  return {
+    frame,
+    vertexA,
+    vertexB,
+    vertexC,
+    labelA: settings.ternaryAxisLabels[0] || 'Variable A',
+    labelB: settings.ternaryAxisLabels[1] || 'Variable B',
+    labelC: settings.ternaryAxisLabels[2] || 'Variable C',
+    gridLines,
+    points,
+    groups,
+  };
+}
+
+/* 10. VORONOI TREEMAP GEOMETRY */
+export interface VoronoiCellGeometry {
+  id: string;
+  parentCategory: string;
+  subcategory: string;
+  value: number;
+  valueLabel: string;
+  sharePct: number;
+  polygon: Polygon2D;
+  centroid: Point2D;
+  bboxWidth: number;
+  bboxHeight: number;
+  fillColor: string;
+  textColor: string;
+}
+
+export interface VoronoiParentGeometry {
+  category: string;
+  totalValue: number;
+  totalLabel: string;
+  sharePct: number;
+  color: string;
+  polygon: Polygon2D;
+  centroid: Point2D;
+  children: VoronoiCellGeometry[];
+}
+
+export interface VoronoiGeometry {
+  frame: SlideFrameLayout;
+  containerPolygon: Polygon2D;
+  center: Point2D;
+  radius: number;
+  totalValue: number;
+  parents: VoronoiParentGeometry[];
+}
+
+export function computeVoronoiGeometry(
+  rows: VoronoiRow[],
+  aspectRatio: AspectRatio,
+  settings: ChartSettings,
+  colors: PaletteColors
+): VoronoiGeometry {
+  const frame = computeSlideFrameLayout(aspectRatio, settings, {
+    left: 48,
+    right: 912,
+    top: settings.subtitle ? 106 : 82,
+    bottom: aspectRatio === '4:3' ? 662 : 494,
+  });
+
+  const availW = frame.plot.width - 255;
+  const availH = frame.plot.height;
+  const radius = Math.max(70, Math.min(availW, availH) * 0.46);
+  const cx = frame.plot.left + 255 + availW / 2;
+  const cy = frame.plot.top + availH / 2;
+
+  const sides =
+    settings.voronoiContainerShape === 'hexagon'
+      ? 6
+      : settings.voronoiContainerShape === 'octagon'
+        ? 8
+        : 48;
+  const rotation = settings.voronoiContainerShape === 'octagon' ? Math.PI / 8 : -Math.PI / 2;
+  const containerPolygon = createRegularPolygon(cx, cy, radius, sides, rotation);
+
+  // Group rows by parent category while preserving insertion order
+  const groupMap = new Map<string, VoronoiRow[]>();
+  rows.forEach((r, idx) => {
+    const cat = (r.category || `Division ${idx + 1}`).trim() || `Division ${idx + 1}`;
+    const list = groupMap.get(cat) ?? [];
+    list.push(r);
+    groupMap.set(cat, list);
+  });
+
+  const grandTotal = rows.reduce(
+    (acc, r) => acc + Math.max(0.01, sanitizeNumber(r.value, 1)),
+    0
+  );
+
+  const paletteCycle = getSeriesColors(colors);
+  const parentItems = Array.from(groupMap.entries()).map(([category, children], idx) => {
+    const total = children.reduce(
+      (acc, c) => acc + Math.max(0.01, sanitizeNumber(c.value, 1)),
+      0
+    );
+    return {
+      id: category,
+      category,
+      weight: total,
+      color: paletteCycle[idx % paletteCycle.length],
+      rawChildren: children,
+    };
+  });
+
+  const parentPartitions = partitionPolygonWeighted(containerPolygon, parentItems, 28);
+
+  const parents: VoronoiParentGeometry[] = parentPartitions.map((part) => {
+    const childItems = part.item.rawChildren.map((c, cIdx) => ({
+      id: c.id,
+      subcategory: c.subcategory || `Item ${cIdx + 1}`,
+      weight: Math.max(0.01, sanitizeNumber(c.value, 1)),
+    }));
+
+    const childPartitions = partitionPolygonWeighted(part.polygon, childItems, 26);
+
+    const children: VoronoiCellGeometry[] = childPartitions.map((cp, cIdx) => {
+      const tintWeight =
+        childPartitions.length <= 1
+          ? 0.08
+          : 0.08 + (cIdx / Math.max(1, childPartitions.length - 1)) * 0.42;
+      const fillColor = blendHexColors(part.item.color, '#FFFFFF', tintWeight);
+      const sharePct = grandTotal > 0 ? (cp.item.weight / grandTotal) * 100 : 0;
+
+      return {
+        id: cp.item.id,
+        parentCategory: part.item.category,
+        subcategory: cp.item.subcategory,
+        value: cp.item.weight,
+        valueLabel: formatNumericValue(cp.item.weight, settings),
+        sharePct,
+        polygon: cp.polygon,
+        centroid: cp.centroid,
+        bboxWidth: cp.bbox.width,
+        bboxHeight: cp.bbox.height,
+        fillColor,
+        textColor: tintWeight > 0.34 ? colors.text : '#FFFFFF',
+      };
+    });
+
+    return {
+      category: part.item.category,
+      totalValue: part.item.weight,
+      totalLabel: formatNumericValue(part.item.weight, settings),
+      sharePct: grandTotal > 0 ? (part.item.weight / grandTotal) * 100 : 0,
+      color: part.item.color,
+      polygon: part.polygon,
+      centroid: part.centroid,
+      children,
+    };
+  });
+
+  return {
+    frame,
+    containerPolygon,
+    center: { x: cx, y: cy },
+    radius,
+    totalValue: grandTotal,
+    parents,
   };
 }

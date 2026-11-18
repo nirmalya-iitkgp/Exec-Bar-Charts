@@ -19,7 +19,7 @@ describe('Unit: Native PPTX Vector Exporter', () => {
     expect(horiz).toEqual({ x: 2, y: 3, w: 5, h: 0, flipV: false });
   });
 
-  it('builds valid PowerPoint slide objects with native vector shapes for all 7 chart types', () => {
+  it('builds valid PowerPoint slide objects with native vector shapes for all 10 chart types', () => {
     const datasets = createInitialDatasets();
     const colors = EXECUTIVE_PALETTES[0].colors;
 
@@ -33,13 +33,18 @@ describe('Unit: Native PPTX Vector Exporter', () => {
         colors,
       });
 
-      const slides = (pptx as unknown as { slides: Array<{ _slideObjects: unknown[] }> }).slides;
+      const slides = (pptx as unknown as { slides: Array<{ _slideObjects: Array<{ shape?: string }> }> }).slides;
       expect(slides.length).toBe(1);
       expect(pptx.layout).toBe('LAYOUT_16x9');
       // Each slide must contain multiple native shape/text objects
       const slideData = slides[0]._slideObjects;
       expect(Array.isArray(slideData)).toBe(true);
       expect(slideData.length).toBeGreaterThan(5);
+
+      if (chartType === ChartType.VORONOI) {
+        const custGeomCount = slideData.filter((obj) => obj.shape === 'custGeom').length;
+        expect(custGeomCount).toBeGreaterThanOrEqual(datasets[ChartType.VORONOI].length);
+      }
     });
   });
 

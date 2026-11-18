@@ -28,6 +28,8 @@ function createInitialSettingsMap(): Record<ChartType, ChartSettings> {
     [ChartType.BULLET]: createDefaultSettings(ChartType.BULLET),
     [ChartType.SPAN]: createDefaultSettings(ChartType.SPAN),
     [ChartType.DIVERGING]: createDefaultSettings(ChartType.DIVERGING),
+    [ChartType.TERNARY]: createDefaultSettings(ChartType.TERNARY),
+    [ChartType.VORONOI]: createDefaultSettings(ChartType.VORONOI),
   };
 }
 

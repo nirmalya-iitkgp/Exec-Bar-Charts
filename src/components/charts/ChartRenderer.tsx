@@ -14,6 +14,8 @@ import {
   PaletteColors,
   SlopegraphRow,
   SpanRow,
+  TernaryRow,
+  VoronoiRow,
 } from '../../types/chart';
 import { BarbellChartSvg } from './BarbellChartSvg';
 import { LollipopChartSvg } from './LollipopChartSvg';
@@ -23,6 +25,8 @@ import { BumpChartSvg } from './BumpChartSvg';
 import { BulletChartSvg } from './BulletChartSvg';
 import { SpanChartSvg } from './SpanChartSvg';
 import { DivergingChartSvg } from './DivergingChartSvg';
+import { TernaryChartSvg } from './TernaryChartSvg';
+import { VoronoiChartSvg } from './VoronoiChartSvg';
 
 interface ChartRendererProps {
   chartType: ChartType;
@@ -142,6 +146,26 @@ export const ChartRenderer: React.FC<ChartRendererProps> = ({
       return (
         <DivergingChartSvg
           rows={datasets[ChartType.DIVERGING] as DivergingRow[]}
+          aspectRatio={aspectRatio}
+          settings={settings}
+          colors={colors}
+          onHover={onHover}
+        />
+      );
+    case ChartType.TERNARY:
+      return (
+        <TernaryChartSvg
+          rows={datasets[ChartType.TERNARY] as TernaryRow[]}
+          aspectRatio={aspectRatio}
+          settings={settings}
+          colors={colors}
+          onHover={onHover}
+        />
+      );
+    case ChartType.VORONOI:
+      return (
+        <VoronoiChartSvg
+          rows={datasets[ChartType.VORONOI] as VoronoiRow[]}
           aspectRatio={aspectRatio}
           settings={settings}
           colors={colors}

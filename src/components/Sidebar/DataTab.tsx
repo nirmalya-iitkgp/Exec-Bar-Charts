@@ -12,6 +12,8 @@ import {
   LollipopRow,
   SlopegraphRow,
   SpanRow,
+  TernaryRow,
+  VoronoiRow,
 } from '../../types/chart';
 import { CHART_METADATA } from '../../constants/mockData';
 import { parseCsvForChartType, serializeDatasetToCsv } from '../../utils/csvParser';
@@ -158,6 +160,31 @@ export const DataTab: React.FC<DataTabProps> = ({
             neutral: 20,
             positive: 35,
             strongPositive: 20,
+          },
+        ]);
+        break;
+      case ChartType.TERNARY:
+        onUpdateRows(ChartType.TERNARY, [
+          ...(datasets[ChartType.TERNARY] as TernaryRow[]),
+          {
+            id: createRowId('tn'),
+            category: 'New Segment',
+            varA: 34,
+            varB: 33,
+            varC: 33,
+            size: 25,
+            group: 'Core',
+          },
+        ]);
+        break;
+      case ChartType.VORONOI:
+        onUpdateRows(ChartType.VORONOI, [
+          ...(datasets[ChartType.VORONOI] as VoronoiRow[]),
+          {
+            id: createRowId('vr'),
+            category: 'New Division',
+            subcategory: 'New Stream',
+            value: 15,
           },
         ]);
         break;
@@ -718,6 +745,158 @@ export const DataTab: React.FC<DataTabProps> = ({
               </tbody>
             </table>
           </div>
+        );
+      }
+
+      case ChartType.TERNARY: {
+        const data = rows as TernaryRow[];
+        return (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[390px] text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-500 font-medium">
+                  <th className="text-left py-2 pr-1">Category</th>
+                  <th className="text-right py-2 px-0.5 w-11" title={settings.ternaryAxisLabels[0]}>A</th>
+                  <th className="text-right py-2 px-0.5 w-11" title={settings.ternaryAxisLabels[1]}>B</th>
+                  <th className="text-right py-2 px-0.5 w-11" title={settings.ternaryAxisLabels[2]}>C</th>
+                  <th className="text-right py-2 px-0.5 w-11">Size</th>
+                  <th className="text-left py-2 px-1 w-18">Group</th>
+                  <th className="w-6" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {data.map((row) => (
+                  <tr key={row.id} className="hover:bg-slate-50/80">
+                    <td className="py-1.5 pr-1">
+                      <input
+                        type="text"
+                        aria-label={`Category for ${row.category}`}
+                        value={row.category}
+                        onChange={(e) => updateRowField<TernaryRow>(row.id, { category: e.target.value })}
+                        className="w-full px-1.5 py-1 bg-white border border-slate-200 rounded text-slate-900 focus:border-blue-600 focus:outline-none"
+                      />
+                    </td>
+                    {(['varA', 'varB', 'varC'] as const).map((field, idx) => (
+                      <td key={field} className="py-1.5 px-0.5">
+                        <input
+                          type="number"
+                          min={0}
+                          step="any"
+                          aria-label={`Axis ${idx + 1} for ${row.category}`}
+                          value={row[field]}
+                          onChange={(e) =>
+                            updateRowField<TernaryRow>(row.id, {
+                              [field]: Math.max(0, sanitizeNumber(e.target.value, 0)),
+                            })
+                          }
+                          className="w-full px-1 py-1 bg-white border border-slate-200 rounded text-right font-mono text-slate-900 focus:border-blue-600 focus:outline-none"
+                        />
+                      </td>
+                    ))}
+                    <td className="py-1.5 px-0.5">
+                      <input
+                        type="number"
+                        min={1}
+                        step="any"
+                        aria-label={`Size for ${row.category}`}
+                        value={row.size}
+                        onChange={(e) =>
+                          updateRowField<TernaryRow>(row.id, {
+                            size: Math.max(1, sanitizeNumber(e.target.value, 1)),
+                          })
+                        }
+                        className="w-full px-1 py-1 bg-white border border-slate-200 rounded text-right font-mono text-slate-900 focus:border-blue-600 focus:outline-none"
+                      />
+                    </td>
+                    <td className="py-1.5 px-0.5">
+                      <input
+                        type="text"
+                        aria-label={`Group for ${row.category}`}
+                        value={row.group}
+                        onChange={(e) => updateRowField<TernaryRow>(row.id, { group: e.target.value })}
+                        className="w-full px-1.5 py-1 bg-white border border-slate-200 rounded text-slate-900 focus:border-blue-600 focus:outline-none"
+                      />
+                    </td>
+                    <td className="py-1.5 pl-0.5 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteRow(row.id)}
+                        aria-label={`Delete ${row.category}`}
+                        className="p-1 text-slate-400 hover:text-rose-600 rounded cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      }
+
+      case ChartType.VORONOI: {
+        const data = rows as VoronoiRow[];
+        return (
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200 text-slate-500 font-medium">
+                <th className="text-left py-2 pr-1">Parent Group</th>
+                <th className="text-left py-2 px-1">Subcategory</th>
+                <th className="text-right py-2 px-1 w-16">Value</th>
+                <th className="w-6" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {data.map((row) => (
+                <tr key={row.id} className="hover:bg-slate-50/80">
+                  <td className="py-1.5 pr-1">
+                    <input
+                      type="text"
+                      aria-label={`Parent group for ${row.subcategory}`}
+                      value={row.category}
+                      onChange={(e) => updateRowField<VoronoiRow>(row.id, { category: e.target.value })}
+                      className="w-full px-1.5 py-1 bg-white border border-slate-200 rounded text-slate-900 focus:border-blue-600 focus:outline-none"
+                    />
+                  </td>
+                  <td className="py-1.5 px-0.5">
+                    <input
+                      type="text"
+                      aria-label={`Subcategory for ${row.subcategory}`}
+                      value={row.subcategory}
+                      onChange={(e) => updateRowField<VoronoiRow>(row.id, { subcategory: e.target.value })}
+                      className="w-full px-1.5 py-1 bg-white border border-slate-200 rounded text-slate-900 focus:border-blue-600 focus:outline-none"
+                    />
+                  </td>
+                  <td className="py-1.5 px-0.5">
+                    <input
+                      type="number"
+                      min={0.01}
+                      step="any"
+                      aria-label={`Value for ${row.subcategory}`}
+                      value={row.value}
+                      onChange={(e) =>
+                        updateRowField<VoronoiRow>(row.id, {
+                          value: Math.max(0.01, sanitizeNumber(e.target.value, 1)),
+                        })
+                      }
+                      className="w-full px-1 py-1 bg-white border border-slate-200 rounded text-right font-mono text-slate-900 focus:border-blue-600 focus:outline-none"
+                    />
+                  </td>
+                  <td className="py-1.5 pl-0.5 text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteRow(row.id)}
+                      aria-label={`Delete ${row.subcategory}`}
+                      className="p-1 text-slate-400 hover:text-rose-600 rounded cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         );
       }
     }
