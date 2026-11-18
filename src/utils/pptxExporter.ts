@@ -8,6 +8,7 @@ import {
   ChartSettings,
   ChartType,
   ClevelandRow,
+  DivergingRow,
   LollipopRow,
   PaletteColors,
   SlopegraphRow,
@@ -20,6 +21,7 @@ import {
   computeBulletGeometry,
   computeBumpGeometry,
   computeClevelandGeometry,
+  computeDivergingGeometry,
   computeLollipopGeometry,
   computeSlopegraphGeometry,
   computeSpanGeometry,
@@ -758,7 +760,7 @@ export function buildPptxPresentation({
 
       if (settings.showLegend) {
         const swatches = [
-          { label: 'Poor', color: '#E2E8F0', x: 48 },
+          { label: 'Poor', color: '#94A3B8', x: 48 },
           { label: 'Satisfactory', color: '#CBD5E1', x: 120 },
           { label: 'Good', color: '#F1F5F9', x: 222 },
           { label: 'Actual', color: colors.primary, x: 298 },
@@ -848,6 +850,32 @@ export function buildPptxPresentation({
           colors.negative,
           2.25
         );
+
+        if (settings.bulletShowTicks) {
+          item.ticks.forEach((tick) => {
+            addVectorLine(
+              slide,
+              pptx,
+              toInX(tick.x),
+              toInY(item.y + item.bandHeight),
+              toInX(tick.x),
+              toInY(item.y + item.bandHeight + 4),
+              colors.mutedText,
+              0.75
+            );
+            slide.addText(tick.label, {
+              x: toInX(tick.x - 24),
+              y: toInY(item.y + item.bandHeight + 3),
+              w: toInX(48),
+              h: toInY(14),
+              fontFace: 'Calibri',
+              fontSize: 7.5,
+              align: 'center',
+              color: stripHashForPptx(colors.mutedText),
+              margin: 0,
+            });
+          });
+        }
 
         if (settings.showValues) {
           slide.addText(`${item.actualLabel} / ${item.targetLabel}`, {
@@ -992,6 +1020,150 @@ export function buildPptxPresentation({
           });
         }
       });
+      break;
+    }
+
+    case ChartType.DIVERGING: {
+      const rows = datasets[ChartType.DIVERGING] as DivergingRow[];
+      const geom = computeDivergingGeometry(rows, aspectRatio, settings, colors);
+      addSlideChrome(slide, geom.frame, toInX, toInY, settings, colors);
+
+      if (settings.showLegend) {
+        const legendSpacing = Math.min(
+          162,
+          Math.floor((geom.frame.svgWidth - 96) / Math.max(1, geom.legendItems.length))
+        );
+        geom.legendItems.forEach((lg, idx) => {
+          const x = 48 + idx * legendSpacing;
+          slide.addShape(pptx.ShapeType.rect, {
+            x: toInX(x),
+            y: toInY(geom.frame.legendY - 5),
+            w: toInX(12),
+            h: toInY(10),
+            fill: { color: stripHashForPptx(lg.color) },
+            line: { color: stripHashForPptx(lg.color), width: 0 },
+          });
+          slide.addText(lg.label, {
+            x: toInX(x + 16),
+            y: toInY(geom.frame.legendY - 9),
+            w: toInX(Math.max(70, legendSpacing - 20)),
+            h: toInY(18),
+            fontFace: 'Calibri',
+            fontSize: 9,
+            color: stripHashForPptx(colors.mutedText),
+            margin: 0,
+          });
+        });
+      }
+
+      geom.ticks.forEach((tick) => {
+        if (settings.showGridlines && tick.value !== 0) {
+          addVectorLine(
+            slide,
+            pptx,
+            toInX(tick.pos),
+            toInY(geom.frame.plot.top),
+            toInX(tick.pos),
+            toInY(geom.frame.plot.bottom),
+            colors.gridline,
+            0.75
+          );
+        }
+        slide.addText(tick.label, {
+          x: toInX(tick.pos - 32),
+          y: toInY(geom.frame.plot.bottom + 4),
+          w: toInX(64),
+          h: toInY(18),
+          fontFace: 'Calibri',
+          fontSize: 8.5,
+          bold: tick.value === 0,
+          align: 'center',
+          color: stripHashForPptx(tick.value === 0 ? colors.text : colors.mutedText),
+          margin: 0,
+        });
+      });
+
+      if (settings.showValues) {
+        slide.addText('Net Split', {
+          x: toInX(geom.frame.plot.right + 14),
+          y: toInY(geom.frame.plot.top - 16),
+          w: toInX(70),
+          h: toInY(16),
+          fontFace: 'Calibri',
+          fontSize: 8.5,
+          bold: true,
+          color: stripHashForPptx(colors.mutedText),
+          margin: 0,
+        });
+      }
+
+      geom.items.forEach((item) => {
+        slide.addText(item.category, {
+          x: toInX(44),
+          y: toInY(item.y - 10),
+          w: toInX(geom.frame.plot.left - 56),
+          h: toInY(20),
+          fontFace: 'Calibri',
+          fontSize: labelPt,
+          align: 'right',
+          valign: 'middle',
+          color: stripHashForPptx(colors.text),
+          margin: 0,
+        });
+
+        item.segments.forEach((seg) => {
+          slide.addShape(pptx.ShapeType.rect, {
+            x: toInX(seg.x),
+            y: toInY(item.y - item.barHeight / 2),
+            w: Math.max(0.01, toInX(seg.width)),
+            h: toInY(item.barHeight),
+            fill: { color: stripHashForPptx(seg.color) },
+            line: { color: 'FFFFFF', width: 0.6 },
+          });
+
+          if (settings.showValues && seg.width >= 30) {
+            slide.addText(seg.displayLabel, {
+              x: toInX(seg.x),
+              y: toInY(item.y - item.barHeight / 2),
+              w: toInX(seg.width),
+              h: toInY(item.barHeight),
+              fontFace: 'Calibri',
+              fontSize: Math.max(7.5, labelPt - 2),
+              bold: true,
+              align: 'center',
+              valign: 'middle',
+              color: stripHashForPptx(seg.textColor),
+              margin: 0,
+            });
+          }
+        });
+
+        if (settings.showValues) {
+          slide.addText(item.netLabel, {
+            x: toInX(geom.frame.plot.right + 14),
+            y: toInY(item.y - 9),
+            w: toInX(70),
+            h: toInY(18),
+            fontFace: 'Calibri',
+            fontSize: Math.max(8, labelPt - 1),
+            bold: true,
+            color: stripHashForPptx(item.netSentiment >= 0 ? colors.positive : colors.negative),
+            margin: 0,
+          });
+        }
+      });
+
+      // Central zero baseline
+      addVectorLine(
+        slide,
+        pptx,
+        toInX(geom.zeroX),
+        toInY(geom.frame.plot.top),
+        toInX(geom.zeroX),
+        toInY(geom.frame.plot.bottom),
+        colors.text,
+        1.5
+      );
       break;
     }
   }

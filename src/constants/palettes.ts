@@ -120,3 +120,24 @@ export function getSeriesColors(colors: PaletteColors): string[] {
     colors.negative,
   ];
 }
+
+export function blendHexColors(hexA: string, hexB: string, weightB: number): string {
+  const a = normalizeHexColor(hexA, '#000000').slice(1);
+  const b = normalizeHexColor(hexB, '#FFFFFF').slice(1);
+  const t = Math.min(1, Math.max(0, Number.isFinite(weightB) ? weightB : 0.5));
+
+  const r1 = parseInt(a.slice(0, 2), 16);
+  const g1 = parseInt(a.slice(2, 4), 16);
+  const b1 = parseInt(a.slice(4, 6), 16);
+
+  const r2 = parseInt(b.slice(0, 2), 16);
+  const g2 = parseInt(b.slice(2, 4), 16);
+  const b2 = parseInt(b.slice(4, 6), 16);
+
+  const r = Math.round(r1 + (r2 - r1) * t);
+  const g = Math.round(g1 + (g2 - g1) * t);
+  const bl = Math.round(b1 + (b2 - b1) * t);
+
+  const toHex = (n: number) => n.toString(16).padStart(2, '0').toUpperCase();
+  return `#${toHex(r)}${toHex(g)}${toHex(bl)}`;
+}

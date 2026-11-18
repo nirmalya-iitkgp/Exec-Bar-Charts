@@ -7,6 +7,7 @@ import {
   computeBulletGeometry,
   computeBumpGeometry,
   computeClevelandGeometry,
+  computeDivergingGeometry,
   computeLollipopGeometry,
   computeSlopegraphGeometry,
   computeSpanGeometry,
@@ -55,6 +56,7 @@ describe('Red Pill Tests: Adversarial, Malformed & Extreme Edge Cases', () => {
       [ChartType.BUMP]: [],
       [ChartType.BULLET]: [],
       [ChartType.SPAN]: [],
+      [ChartType.DIVERGING]: [],
     };
     const colors = EXECUTIVE_PALETTES[0].colors;
 
@@ -78,6 +80,9 @@ describe('Red Pill Tests: Adversarial, Malformed & Extreme Edge Cases', () => {
     ).not.toThrow();
     expect(() =>
       computeSpanGeometry([], '16:9', createDefaultSettings(ChartType.SPAN))
+    ).not.toThrow();
+    expect(() =>
+      computeDivergingGeometry([], '16:9', createDefaultSettings(ChartType.DIVERGING), colors)
     ).not.toThrow();
 
     (Object.values(ChartType) as ChartType[]).forEach((chartType) => {
@@ -147,5 +152,41 @@ describe('Red Pill Tests: Adversarial, Malformed & Extreme Edge Cases', () => {
   it('neutralizes invalid hex color strings before PPTX export', () => {
     expect(normalizeHexColor('javascript:alert(1)', '#1E3A8A')).toBe('#1E3A8A');
     expect(normalizeHexColor('ZZZZZZ', '#0F172A')).toBe('#0F172A');
+  });
+
+  it('handles all-zero and negative Likert inputs safely without NaN widths', () => {
+    const colors = EXECUTIVE_PALETTES[0].colors;
+    const geom = computeDivergingGeometry(
+      [
+        {
+          id: 'd1',
+          category: 'Zero Survey',
+          strongNegative: 0,
+          negative: 0,
+          neutral: 0,
+          positive: 0,
+          strongPositive: 0,
+        },
+        {
+          id: 'd2',
+          category: 'Negative Hostile',
+          strongNegative: -15,
+          negative: Number.NaN,
+          neutral: 10,
+          positive: 40,
+          strongPositive: Number.POSITIVE_INFINITY,
+        },
+      ],
+      '16:9',
+      createDefaultSettings(ChartType.DIVERGING),
+      colors
+    );
+    expect(Number.isFinite(geom.zeroX)).toBe(true);
+    geom.items.forEach((item) => {
+      item.segments.forEach((seg) => {
+        expect(Number.isFinite(seg.x)).toBe(true);
+        expect(Number.isFinite(seg.width)).toBe(true);
+      });
+    });
   });
 });

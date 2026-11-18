@@ -7,6 +7,7 @@ import {
   ChartSettings,
   ChartType,
   ClevelandRow,
+  DivergingRow,
   LollipopRow,
   SlopegraphRow,
   SpanRow,
@@ -301,6 +302,44 @@ export function parseCsvForChartType<K extends ChartType>(
         error: rows.length === 0 ? 'No valid Span Chart rows could be parsed.' : null,
       };
     }
+
+    case ChartType.DIVERGING: {
+      const rows: DivergingRow[] = [];
+      rawRows.forEach((rec, idx) => {
+        const category = sanitizeText(pickField(rec, ['category', 'question', 'dimension', 'name', 'label'], 0));
+        const rawSN = pickField(rec, ['strongnegative', 'stronglydisagree', 'detractor', 'sn'], 1);
+        const rawN = pickField(rec, ['negative', 'disagree', 'neg'], 2);
+        const rawNeu = pickField(rec, ['neutral', 'passive', 'undecided', 'neu'], 3);
+        const rawP = pickField(rec, ['positive', 'agree', 'pos'], 4);
+        const rawSP = pickField(rec, ['strongpositive', 'stronglyagree', 'promoter', 'sp'], 5);
+        if (!category) {
+          warnings.push(`Row ${idx + 1}: Missing category name, skipped.`);
+          return;
+        }
+        if (
+          !isStrictNumericToken(rawSN) ||
+          !isStrictNumericToken(rawN) ||
+          !isStrictNumericToken(rawP) ||
+          !isStrictNumericToken(rawSP)
+        ) {
+          warnings.push(`Row ${idx + 1} (${category}): Non-numeric sentiment value coerced to 0.`);
+        }
+        rows.push({
+          id: createRowId('dv'),
+          category,
+          strongNegative: Math.max(0, sanitizeNumber(rawSN, 0)),
+          negative: Math.max(0, sanitizeNumber(rawN, 0)),
+          neutral: Math.max(0, sanitizeNumber(rawNeu, 0)),
+          positive: Math.max(0, sanitizeNumber(rawP, 0)),
+          strongPositive: Math.max(0, sanitizeNumber(rawSP, 0)),
+        });
+      });
+      return {
+        rows: rows as ChartDatasetMap[K][number][],
+        warnings,
+        error: rows.length === 0 ? 'No valid Diverging Stacked Bar rows could be parsed.' : null,
+      };
+    }
   }
 }
 
@@ -371,6 +410,17 @@ export function serializeDatasetToCsv<K extends ChartType>(
           MinValue: r.minValue,
           MaxValue: r.maxValue,
           AverageValue: r.averageValue ?? '',
+        }))
+      );
+    case ChartType.DIVERGING:
+      return Papa.unparse(
+        (rows as DivergingRow[]).map((r) => ({
+          Category: r.category,
+          StrongNegative: r.strongNegative,
+          Negative: r.negative,
+          Neutral: r.neutral,
+          Positive: r.positive,
+          StrongPositive: r.strongPositive,
         }))
       );
   }

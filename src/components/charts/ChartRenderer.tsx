@@ -9,6 +9,7 @@ import {
   ChartSettings,
   ChartType,
   ClevelandRow,
+  DivergingRow,
   LollipopRow,
   PaletteColors,
   SlopegraphRow,
@@ -21,6 +22,7 @@ import { SlopegraphChartSvg } from './SlopegraphChartSvg';
 import { BumpChartSvg } from './BumpChartSvg';
 import { BulletChartSvg } from './BulletChartSvg';
 import { SpanChartSvg } from './SpanChartSvg';
+import { DivergingChartSvg } from './DivergingChartSvg';
 
 interface ChartRendererProps {
   chartType: ChartType;
@@ -130,6 +132,16 @@ export const ChartRenderer: React.FC<ChartRendererProps> = ({
       return (
         <SpanChartSvg
           rows={datasets[ChartType.SPAN] as SpanRow[]}
+          aspectRatio={aspectRatio}
+          settings={settings}
+          colors={colors}
+          onHover={onHover}
+        />
+      );
+    case ChartType.DIVERGING:
+      return (
+        <DivergingChartSvg
+          rows={datasets[ChartType.DIVERGING] as DivergingRow[]}
           aspectRatio={aspectRatio}
           settings={settings}
           colors={colors}

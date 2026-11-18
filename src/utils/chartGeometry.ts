@@ -6,12 +6,13 @@ import {
   BumpRow,
   ChartSettings,
   ClevelandRow,
+  DivergingRow,
   LollipopRow,
   PaletteColors,
   SlopegraphRow,
   SpanRow,
 } from '../types/chart';
-import { getSeriesColors } from '../constants/palettes';
+import { blendHexColors, getSeriesColors } from '../constants/palettes';
 import { formatNumericValue, getSlideDimensions, sanitizeNumber } from './formatters';
 
 export interface PlotBox {
@@ -559,6 +560,7 @@ export interface BulletItemGeometry {
   actualLabel: string;
   targetLabel: string;
   isOnTarget: boolean;
+  ticks: { x: number; label: string }[];
 }
 
 export interface BulletGeometry {
@@ -574,10 +576,10 @@ export function computeBulletGeometry(
   const frame = computeSlideFrameLayout(aspectRatio, settings, { left: 205, right: 870 });
   const yBand = scaleBand<number>()
     .domain(rows.map((_, i) => i))
-    .range([frame.plot.top + 6, frame.plot.bottom - 6])
-    .padding(0.32);
+    .range([frame.plot.top + 6, frame.plot.bottom - 14])
+    .padding(0.35);
 
-  const bandHeight = Math.max(18, Math.min(44, yBand.bandwidth()));
+  const bandHeight = Math.max(18, Math.min(42, yBand.bandwidth()));
   const actualHeight = Math.max(6, Math.round(bandHeight * 0.36));
 
   const items: BulletItemGeometry[] = rows.map((row, i) => {
@@ -587,8 +589,12 @@ export function computeBulletGeometry(
     const goodRaw = Math.max(poorRaw, sanitizeNumber(row.goodThreshold));
     const rowMax = Math.max(actual, target, goodRaw, 1) * 1.12;
 
-    const xScale = scaleLinear().domain([0, rowMax]).range([0, frame.plot.width]);
+    const xScale = scaleLinear().domain([0, rowMax]).range([0, frame.plot.width]).nice();
     const bandTop = (yBand(i) ?? frame.plot.top) + (yBand.bandwidth() - bandHeight) / 2;
+    const ticks = xScale.ticks(4).map((val) => ({
+      x: frame.plot.left + xScale(val),
+      label: formatNumericValue(val, settings),
+    }));
 
     return {
       id: row.id,
@@ -606,6 +612,7 @@ export function computeBulletGeometry(
       actualLabel: formatNumericValue(actual, settings),
       targetLabel: formatNumericValue(target, settings),
       isOnTarget: actual >= target,
+      ticks,
     };
   });
 
@@ -693,4 +700,240 @@ export function computeSpanGeometry(
   });
 
   return { frame, ticks, items };
+}
+
+/* 8. DIVERGING STACKED BAR CHART GEOMETRY */
+export type DivergingSegmentKey =
+  | 'strongNegative'
+  | 'negative'
+  | 'neutral'
+  | 'positive'
+  | 'strongPositive';
+
+export interface DivergingSegmentGeometry {
+  key: DivergingSegmentKey;
+  label: string;
+  value: number;
+  displayLabel: string;
+  x: number;
+  width: number;
+  color: string;
+  textColor: string;
+}
+
+export interface DivergingItemGeometry {
+  id: string;
+  category: string;
+  y: number;
+  barHeight: number;
+  netSentiment: number;
+  netLabel: string;
+  segments: DivergingSegmentGeometry[];
+}
+
+export interface DivergingLegendItem {
+  key: DivergingSegmentKey;
+  label: string;
+  color: string;
+}
+
+export interface DivergingGeometry {
+  frame: SlideFrameLayout;
+  zeroX: number;
+  ticks: AxisTick[];
+  legendItems: DivergingLegendItem[];
+  items: DivergingItemGeometry[];
+}
+
+export function computeDivergingGeometry(
+  rows: DivergingRow[],
+  aspectRatio: AspectRatio,
+  settings: ChartSettings,
+  colors: PaletteColors
+): DivergingGeometry {
+  const frame = computeSlideFrameLayout(aspectRatio, settings, { left: 190, right: 862 });
+
+  const segColors: Record<DivergingSegmentKey, string> = {
+    strongNegative: colors.negative,
+    negative: blendHexColors(colors.negative, '#FFFFFF', 0.44),
+    neutral: blendHexColors(colors.neutral, '#FFFFFF', 0.35),
+    positive: blendHexColors(colors.positive, '#FFFFFF', 0.44),
+    strongPositive: colors.positive,
+  };
+
+  const labels = settings.divergingLabels;
+  const isSplitNeutral = settings.divergingCenterMode === 'split-neutral';
+
+  const normalizedRows = rows.map((row, idx) => {
+    const rawSN = Math.max(0, sanitizeNumber(row.strongNegative));
+    const rawN = Math.max(0, sanitizeNumber(row.negative));
+    const rawNeu = Math.max(0, sanitizeNumber(row.neutral));
+    const rawP = Math.max(0, sanitizeNumber(row.positive));
+    const rawSP = Math.max(0, sanitizeNumber(row.strongPositive));
+    const sum = rawSN + rawN + rawNeu + rawP + rawSP;
+    const factor = settings.divergingNormalize100 && sum > 0 ? 100 / sum : 1;
+
+    const sn = rawSN * factor;
+    const neg = rawN * factor;
+    const neu = isSplitNeutral ? rawNeu * factor : 0;
+    const pos = rawP * factor;
+    const sp = rawSP * factor;
+
+    const halfNeu = neu / 2;
+    const leftReach = halfNeu + neg + sn;
+    const rightReach = halfNeu + pos + sp;
+
+    return {
+      id: row.id,
+      category: row.category || `Question ${idx + 1}`,
+      sn,
+      neg,
+      neu,
+      pos,
+      sp,
+      halfNeu,
+      leftReach,
+      rightReach,
+    };
+  });
+
+  const maxReachRaw = Math.max(
+    10,
+    ...normalizedRows.flatMap((r) => [r.leftReach, r.rightReach])
+  );
+  const bound = settings.divergingNormalize100
+    ? Math.min(100, Math.max(20, Math.ceil(maxReachRaw / 10) * 10))
+    : Math.ceil(maxReachRaw * 1.1);
+
+  const xScale = scaleLinear().domain([-bound, bound]).range([frame.plot.left, frame.plot.right]).nice();
+  const zeroX = xScale(0);
+
+  const yBand = scaleBand<number>()
+    .domain(rows.map((_, i) => i))
+    .range([frame.plot.top + 8, frame.plot.bottom - 10])
+    .padding(0.36);
+
+  const barHeight = Math.max(14, Math.min(34, yBand.bandwidth()));
+
+  const ticks: AxisTick[] = xScale.ticks(6).map((value) => {
+    const absVal = Math.abs(value);
+    const formatted = settings.divergingNormalize100
+      ? `${Math.round(absVal)}%`
+      : formatNumericValue(absVal, settings);
+    return {
+      value,
+      pos: xScale(value),
+      label: value === 0 ? (settings.divergingNormalize100 ? '0%' : '0') : formatted,
+    };
+  });
+
+  const fmtSeg = (val: number) =>
+    settings.divergingNormalize100
+      ? `${Math.round(val)}%`
+      : formatNumericValue(val, settings);
+
+  const items: DivergingItemGeometry[] = normalizedRows.map((row, i) => {
+    const centerY = (yBand(i) ?? frame.plot.top) + yBand.bandwidth() / 2;
+    const segments: DivergingSegmentGeometry[] = [];
+
+    const pushSeg = (
+      key: DivergingSegmentKey,
+      label: string,
+      val: number,
+      domainStart: number,
+      domainEnd: number,
+      textColor: string
+    ) => {
+      if (val <= 0) return;
+      const xStart = xScale(domainStart);
+      const xEnd = xScale(domainEnd);
+      segments.push({
+        key,
+        label,
+        value: val,
+        displayLabel: fmtSeg(val),
+        x: Math.min(xStart, xEnd),
+        width: Math.abs(xEnd - xStart),
+        color: segColors[key],
+        textColor,
+      });
+    };
+
+    pushSeg(
+      'strongNegative',
+      labels[0] || 'Strongly Disagree',
+      row.sn,
+      -(row.halfNeu + row.neg + row.sn),
+      -(row.halfNeu + row.neg),
+      '#FFFFFF'
+    );
+    pushSeg(
+      'negative',
+      labels[1] || 'Disagree',
+      row.neg,
+      -(row.halfNeu + row.neg),
+      -row.halfNeu,
+      colors.text
+    );
+    if (isSplitNeutral) {
+      pushSeg(
+        'neutral',
+        labels[2] || 'Neutral',
+        row.neu,
+        -row.halfNeu,
+        row.halfNeu,
+        colors.text
+      );
+    }
+    pushSeg(
+      'positive',
+      labels[3] || 'Agree',
+      row.pos,
+      row.halfNeu,
+      row.halfNeu + row.pos,
+      colors.text
+    );
+    pushSeg(
+      'strongPositive',
+      labels[4] || 'Strongly Agree',
+      row.sp,
+      row.halfNeu + row.pos,
+      row.halfNeu + row.pos + row.sp,
+      '#FFFFFF'
+    );
+
+    const netSentiment = row.pos + row.sp - (row.neg + row.sn);
+    const netRounded = Math.round(netSentiment);
+    const netLabel = settings.divergingNormalize100
+      ? `${netRounded > 0 ? '+' : ''}${netRounded}%`
+      : `${netRounded > 0 ? '+' : ''}${formatNumericValue(netSentiment, settings)}`;
+
+    return {
+      id: row.id,
+      category: row.category,
+      y: centerY,
+      barHeight,
+      netSentiment,
+      netLabel,
+      segments,
+    };
+  });
+
+  const legendItems: DivergingLegendItem[] = [
+    { key: 'strongNegative', label: labels[0] || 'Strongly Disagree', color: segColors.strongNegative },
+    { key: 'negative', label: labels[1] || 'Disagree', color: segColors.negative },
+    ...(isSplitNeutral
+      ? [{ key: 'neutral' as const, label: labels[2] || 'Neutral', color: segColors.neutral }]
+      : []),
+    { key: 'positive', label: labels[3] || 'Agree', color: segColors.positive },
+    { key: 'strongPositive', label: labels[4] || 'Strongly Agree', color: segColors.strongPositive },
+  ];
+
+  return {
+    frame,
+    zeroX,
+    ticks,
+    legendItems,
+    items,
+  };
 }

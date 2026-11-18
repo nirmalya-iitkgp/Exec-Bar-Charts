@@ -8,6 +8,7 @@ import {
   ChartSettings,
   ChartType,
   ClevelandRow,
+  DivergingRow,
   LollipopRow,
   SlopegraphRow,
   SpanRow,
@@ -144,6 +145,20 @@ export const DataTab: React.FC<DataTabProps> = ({
         onUpdateRows(ChartType.SPAN, [
           ...(datasets[ChartType.SPAN] as SpanRow[]),
           { id: createRowId('sp'), category: 'New Band', minValue: 140, maxValue: 210, averageValue: 175 },
+        ]);
+        break;
+      case ChartType.DIVERGING:
+        onUpdateRows(ChartType.DIVERGING, [
+          ...(datasets[ChartType.DIVERGING] as DivergingRow[]),
+          {
+            id: createRowId('dv'),
+            category: 'New Question',
+            strongNegative: 10,
+            negative: 15,
+            neutral: 20,
+            positive: 35,
+            strongPositive: 20,
+          },
         ]);
         break;
     }
@@ -632,6 +647,77 @@ export const DataTab: React.FC<DataTabProps> = ({
               ))}
             </tbody>
           </table>
+        );
+      }
+
+      case ChartType.DIVERGING: {
+        const data = rows as DivergingRow[];
+        return (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[370px] text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-500 font-medium">
+                  <th className="text-left py-2 pr-1">Question</th>
+                  <th className="text-right py-2 px-0.5 w-11" title="Strongly Negative">--</th>
+                  <th className="text-right py-2 px-0.5 w-11" title="Negative">-</th>
+                  <th className="text-right py-2 px-0.5 w-11" title="Neutral">0</th>
+                  <th className="text-right py-2 px-0.5 w-11" title="Positive">+</th>
+                  <th className="text-right py-2 px-0.5 w-11" title="Strongly Positive">++</th>
+                  <th className="w-6" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {data.map((row) => (
+                  <tr key={row.id} className="hover:bg-slate-50/80">
+                    <td className="py-1.5 pr-1">
+                      <input
+                        type="text"
+                        aria-label={`Category for ${row.category}`}
+                        value={row.category}
+                        onChange={(e) => updateRowField<DivergingRow>(row.id, { category: e.target.value })}
+                        className="w-full px-1.5 py-1 bg-white border border-slate-200 rounded text-slate-900 focus:border-blue-600 focus:outline-none"
+                      />
+                    </td>
+                    {(
+                      [
+                        ['strongNegative', 'Strong Negative'],
+                        ['negative', 'Negative'],
+                        ['neutral', 'Neutral'],
+                        ['positive', 'Positive'],
+                        ['strongPositive', 'Strong Positive'],
+                      ] as const
+                    ).map(([field, label]) => (
+                      <td key={field} className="py-1.5 px-0.5">
+                        <input
+                          type="number"
+                          min={0}
+                          step="any"
+                          aria-label={`${label} for ${row.category}`}
+                          value={row[field]}
+                          onChange={(e) =>
+                            updateRowField<DivergingRow>(row.id, {
+                              [field]: Math.max(0, sanitizeNumber(e.target.value, 0)),
+                            })
+                          }
+                          className="w-full px-1 py-1 bg-white border border-slate-200 rounded text-right font-mono text-slate-900 focus:border-blue-600 focus:outline-none"
+                        />
+                      </td>
+                    ))}
+                    <td className="py-1.5 pl-0.5 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteRow(row.id)}
+                        aria-label={`Delete ${row.category}`}
+                        className="p-1 text-slate-400 hover:text-rose-600 rounded cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         );
       }
     }

@@ -27,6 +27,7 @@ function createInitialSettingsMap(): Record<ChartType, ChartSettings> {
     [ChartType.BUMP]: createDefaultSettings(ChartType.BUMP),
     [ChartType.BULLET]: createDefaultSettings(ChartType.BULLET),
     [ChartType.SPAN]: createDefaultSettings(ChartType.SPAN),
+    [ChartType.DIVERGING]: createDefaultSettings(ChartType.DIVERGING),
   };
 }
 

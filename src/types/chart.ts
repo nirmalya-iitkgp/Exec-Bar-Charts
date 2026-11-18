@@ -6,6 +6,7 @@ export enum ChartType {
   BUMP = 'bump',
   BULLET = 'bullet',
   SPAN = 'span',
+  DIVERGING = 'diverging',
 }
 
 export type AspectRatio = '16:9' | '4:3';
@@ -65,6 +66,16 @@ export interface SpanRow {
   averageValue: number | null;
 }
 
+export interface DivergingRow {
+  id: string;
+  category: string;
+  strongNegative: number;
+  negative: number;
+  neutral: number;
+  positive: number;
+  strongPositive: number;
+}
+
 export interface ChartDatasetMap {
   [ChartType.BARBELL]: BarbellRow[];
   [ChartType.LOLLIPOP]: LollipopRow[];
@@ -73,6 +84,7 @@ export interface ChartDatasetMap {
   [ChartType.BUMP]: BumpRow[];
   [ChartType.BULLET]: BulletRow[];
   [ChartType.SPAN]: SpanRow[];
+  [ChartType.DIVERGING]: DivergingRow[];
 }
 
 export interface PaletteColors {
@@ -117,6 +129,10 @@ export interface ChartSettings {
   period2Label: string;
   clevelandSeriesNames: [string, string, string];
   bumpPeriods: string[];
+  divergingCenterMode: 'split-neutral' | 'zero-split';
+  divergingNormalize100: boolean;
+  divergingLabels: [string, string, string, string, string];
+  bulletShowTicks: boolean;
 }
 
 export interface ChartMeta {

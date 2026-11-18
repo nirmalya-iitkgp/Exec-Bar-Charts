@@ -125,6 +125,33 @@ export const BulletChartSvg: React.FC<BulletChartSvgProps> = ({
               strokeWidth={3}
             />
 
+            {/* Per-row quantitative scale ticks */}
+            {settings.bulletShowTicks &&
+              item.ticks.map((tick, tIdx) => (
+                <g key={`btick-${tIdx}`}>
+                  <line
+                    x1={tick.x}
+                    y1={item.y + item.bandHeight}
+                    x2={tick.x}
+                    y2={item.y + item.bandHeight + 4}
+                    stroke={colors.mutedText}
+                    strokeWidth={0.9}
+                    opacity={0.7}
+                  />
+                  <text
+                    x={tick.x}
+                    y={item.y + item.bandHeight + 13}
+                    textAnchor="middle"
+                    fontSize={9}
+                    fill={colors.mutedText}
+                    fontFamily="var(--font-mono)"
+                    opacity={0.85}
+                  >
+                    {tick.label}
+                  </text>
+                </g>
+              ))}
+
             {settings.showValues && (
               <text
                 x={frame.plot.right + 12}

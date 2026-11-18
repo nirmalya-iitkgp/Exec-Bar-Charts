@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EXECUTIVE_PALETTES, normalizeHexColor, stripHashForPptx } from '../../constants/palettes';
+import { blendHexColors, EXECUTIVE_PALETTES, normalizeHexColor, stripHashForPptx } from '../../constants/palettes';
 import { createDefaultSettings, createInitialDatasets } from '../../constants/mockData';
 import { ChartType } from '../../types/chart';
 import {
@@ -7,6 +7,7 @@ import {
   computeBulletGeometry,
   computeBumpGeometry,
   computeClevelandGeometry,
+  computeDivergingGeometry,
   computeLollipopGeometry,
   computeSlopegraphGeometry,
   computeSpanGeometry,
@@ -143,5 +144,34 @@ describe('Unit: Chart Geometry Engine & Formatters', () => {
       expect(item.xMax).toBeGreaterThanOrEqual(item.xMin);
       expect(item.xAvg).not.toBeNull();
     });
+  });
+
+  it('computes Diverging Stacked Bar geometry centered at zero for split-neutral and zero-split modes', () => {
+    const datasets = createInitialDatasets();
+    const settings = createDefaultSettings(ChartType.DIVERGING);
+    const splitGeom = computeDivergingGeometry(datasets[ChartType.DIVERGING], '16:9', settings, colors);
+
+    expect(splitGeom.items.length).toBe(6);
+    expect(splitGeom.legendItems).toHaveLength(5);
+    const first = splitGeom.items[0];
+    const neutralSeg = first.segments.find((s) => s.key === 'neutral')!;
+    // Neutral segment must straddle zeroX symmetrically
+    const neutralCenter = neutralSeg.x + neutralSeg.width / 2;
+    expect(Math.abs(neutralCenter - splitGeom.zeroX)).toBeLessThan(0.5);
+
+    // Zero-split mode excludes neutral from the center seam so negative/positive touch zeroX
+    const zeroSettings = { ...settings, divergingCenterMode: 'zero-split' as const };
+    const zeroGeom = computeDivergingGeometry(datasets[ChartType.DIVERGING], '16:9', zeroSettings, colors);
+    expect(zeroGeom.legendItems).toHaveLength(4);
+    const negSeg = zeroGeom.items[0].segments.find((s) => s.key === 'negative')!;
+    const posSeg = zeroGeom.items[0].segments.find((s) => s.key === 'positive')!;
+    expect(Math.abs(negSeg.x + negSeg.width - zeroGeom.zeroX)).toBeLessThan(0.5);
+    expect(Math.abs(posSeg.x - zeroGeom.zeroX)).toBeLessThan(0.5);
+  });
+
+  it('blends hex colors accurately for derived Likert shades', () => {
+    expect(blendHexColors('#000000', '#FFFFFF', 0)).toBe('#000000');
+    expect(blendHexColors('#000000', '#FFFFFF', 1)).toBe('#FFFFFF');
+    expect(blendHexColors('#000000', '#FFFFFF', 0.5)).toBe('#808080');
   });
 });

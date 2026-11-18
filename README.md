@@ -22,7 +22,7 @@
 
 ---
 
-## 📈 Supported Chart Types (7 Executive Schemas)
+## 📈 Supported Chart Types (8 Executive Schemas)
 
 | # | Chart Type | Data Schema | Best Used For |
 |---|---|---|---|
@@ -31,8 +31,9 @@
 | 3 | **Cleveland Dot Plot** | `Category`, `SeriesA`, `SeriesB`, `SeriesC` | Multi-series comparison without bar clutter |
 | 4 | **Slopegraph** | `Category`, `Period1Value`, `Period2Value` | Two-period rank & magnitude trajectory |
 | 5 | **Bump Chart** | `Entity`, `Q1`, `Q2`, `Q3`, `Q4` | Competitive rank tracking over time (Rank 1 at top) |
-| 6 | **Bullet Chart** | `Metric`, `Actual`, `Target`, `PoorThreshold`, `GoodThreshold` | KPI actuals vs. targets & qualitative bands |
+| 6 | **Bullet Chart** | `Metric`, `Actual`, `Target`, `PoorThreshold`, `GoodThreshold` | KPI actuals vs. targets, qualitative bands & scale ticks |
 | 7 | **Span (Range) Chart** | `Category`, `MinValue`, `MaxValue`, `AverageValue?` | Min–max spread, salary bands, volatility with optional mean |
+| 8 | **Diverging Stacked Bar Chart** | `Category`, `StrongNegative`, `Negative`, `Neutral`, `Positive`, `StrongPositive` | Center-aligned Likert surveys & sentiment splits around zero |
 
 ---
 

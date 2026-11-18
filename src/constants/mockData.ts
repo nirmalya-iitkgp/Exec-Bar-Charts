@@ -50,6 +50,13 @@ export const CHART_METADATA: ChartMeta[] = [
     description: 'Display min-to-max spread and optional average markers by category.',
     schemaHint: 'Category, MinValue, MaxValue, AverageValue',
   },
+  {
+    type: ChartType.DIVERGING,
+    label: 'Diverging Stacked Bar Chart',
+    shortLabel: 'Diverging Bar',
+    description: 'Center-aligned Likert & sentiment split anchored around a central zero baseline.',
+    schemaHint: 'Category, StrongNegative, Negative, Neutral, Positive, StrongPositive',
+  },
 ];
 
 export function createInitialDatasets(): ChartDatasetMap {
@@ -107,6 +114,14 @@ export function createInitialDatasets(): ChartDatasetMap {
       { id: 'sp-5', category: 'Solutions Architect', minValue: 165, maxValue: 225, averageValue: 196 },
       { id: 'sp-6', category: 'Engineering Mgr', minValue: 190, maxValue: 260, averageValue: 226 },
     ],
+    [ChartType.DIVERGING]: [
+      { id: 'dv-1', category: 'Leadership Vision', strongNegative: 5, negative: 11, neutral: 14, positive: 42, strongPositive: 28 },
+      { id: 'dv-2', category: 'Tooling & Reliability', strongNegative: 8, negative: 17, neutral: 18, positive: 36, strongPositive: 21 },
+      { id: 'dv-3', category: 'Career Progression', strongNegative: 14, negative: 23, neutral: 21, positive: 28, strongPositive: 14 },
+      { id: 'dv-4', category: 'Team Collaboration', strongNegative: 4, negative: 8, neutral: 12, positive: 44, strongPositive: 32 },
+      { id: 'dv-5', category: 'Compensation Fairness', strongNegative: 16, negative: 22, neutral: 20, positive: 29, strongPositive: 13 },
+      { id: 'dv-6', category: 'Work-Life Balance', strongNegative: 7, negative: 13, neutral: 16, positive: 38, strongPositive: 26 },
+    ],
   };
 }
 
@@ -160,6 +175,13 @@ export const DEFAULT_CHART_COPY: Record<ChartType, { title: string; subtitle: st
     prefix: '$',
     suffix: 'K',
   },
+  [ChartType.DIVERGING]: {
+    title: 'Q4 Employee Engagement & Sentiment Split',
+    subtitle: 'Center-aligned 5-point Likert response share (%) anchored on neutral midpoint',
+    footnote: 'Source: Annual Organizational Pulse Survey (n = 1,420) · Neutral split evenly across 0%',
+    prefix: '',
+    suffix: '%',
+  },
 };
 
 export function createDefaultSettings(chartType: ChartType): ChartSettings {
@@ -186,5 +208,9 @@ export function createDefaultSettings(chartType: ChartType): ChartSettings {
     period2Label: '2025',
     clevelandSeriesNames: ['API Gateway', 'Auth Edge', 'Storage Read'],
     bumpPeriods: ['Q1', 'Q2', 'Q3', 'Q4'],
+    divergingCenterMode: 'split-neutral',
+    divergingNormalize100: true,
+    divergingLabels: ['Strongly Disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly Agree'],
+    bulletShowTicks: true,
   };
 }

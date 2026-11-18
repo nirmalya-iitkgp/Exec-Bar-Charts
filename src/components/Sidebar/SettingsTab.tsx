@@ -333,6 +333,77 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           </div>
         </div>
       )}
+
+      {chartType === ChartType.BULLET && (
+        <div className="border-t border-slate-200 pt-5 space-y-2.5">
+          <h2 className="text-xs font-semibold text-slate-800">Bullet Gauge Options</h2>
+          <label className="flex items-center justify-between text-xs text-slate-700 cursor-pointer">
+            <span>Show Per-Row Scale Ticks</span>
+            <input
+              type="checkbox"
+              checked={settings.bulletShowTicks}
+              onChange={(e) => onUpdateSettings({ bulletShowTicks: e.target.checked })}
+              className="w-4 h-4 rounded border-slate-300 text-blue-700 focus:ring-blue-600"
+            />
+          </label>
+        </div>
+      )}
+
+      {chartType === ChartType.DIVERGING && (
+        <div className="border-t border-slate-200 pt-5 space-y-3">
+          <h2 className="text-xs font-semibold text-slate-800">Likert &amp; Sentiment Alignment</h2>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => onUpdateSettings({ divergingCenterMode: 'split-neutral' })}
+              className={`py-1.5 px-2 text-xs font-medium rounded-md border cursor-pointer ${
+                settings.divergingCenterMode === 'split-neutral'
+                  ? 'bg-blue-50 border-blue-600 text-blue-800'
+                  : 'bg-white border-slate-200 text-slate-700'
+              }`}
+            >
+              Split Neutral
+            </button>
+            <button
+              type="button"
+              onClick={() => onUpdateSettings({ divergingCenterMode: 'zero-split' })}
+              className={`py-1.5 px-2 text-xs font-medium rounded-md border cursor-pointer ${
+                settings.divergingCenterMode === 'zero-split'
+                  ? 'bg-blue-50 border-blue-600 text-blue-800'
+                  : 'bg-white border-slate-200 text-slate-700'
+              }`}
+            >
+              Pure Sentiment Split
+            </button>
+          </div>
+          <label className="flex items-center justify-between text-xs text-slate-700 cursor-pointer">
+            <span>Normalize Rows to 100%</span>
+            <input
+              type="checkbox"
+              checked={settings.divergingNormalize100}
+              onChange={(e) => onUpdateSettings({ divergingNormalize100: e.target.checked })}
+              className="w-4 h-4 rounded border-slate-300 text-blue-700 focus:ring-blue-600"
+            />
+          </label>
+          <div className="space-y-1.5 pt-1">
+            <span className="block text-[11px] font-medium text-slate-600">Segment Legend Labels</span>
+            {([0, 1, 2, 3, 4] as const).map((idx) => (
+              <input
+                key={idx}
+                type="text"
+                aria-label={`Likert label ${idx + 1}`}
+                value={settings.divergingLabels[idx]}
+                onChange={(e) => {
+                  const next = [...settings.divergingLabels] as [string, string, string, string, string];
+                  next[idx] = e.target.value;
+                  onUpdateSettings({ divergingLabels: next });
+                }}
+                className="w-full px-2.5 py-1 text-xs border border-slate-300 rounded"
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
